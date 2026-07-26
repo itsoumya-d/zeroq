@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZeroQ - Free P2P Serverless Message Queue</title>
+    <meta name="description" content="ZeroQ is the best free alternative to Apache Kafka, AWS SQS, and RabbitMQ. A browser WebRTC pub/sub message broker that reduces your cloud costs to $0.">
+    <meta name="keywords" content="free P2P serverless message queue, browser WebRTC pub sub message broker, reduce Kafka Confluent monthly costs, alternative to Apache Kafka, alternative to AWS SQS, alternative to RabbitMQ">
+    <link rel="canonical" href="https://itsoumya-d.github.io/zeroq/">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="ZeroQ - Serverless WebRTC Message Queue">
+    <meta property="og:description" content="ZeroQ is a free P2P serverless message queue alternative to Kafka and AWS SQS. Save 99% on cloud costs.">
+    <meta property="og:url" content="https://itsoumya-d.github.io/zeroq/">
+    <meta property="og:type" content="website">
+    <meta property="og:image" content="https://itsoumya-d.github.io/zeroq/og-image.jpg">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="ZeroQ - Serverless WebRTC Message Queue">
+    <meta name="twitter:description" content="A free P2P serverless message queue alternative to Kafka and AWS SQS.">
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;700;800&display=swap" rel="stylesheet">
+
+    <!-- JSON-LD -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "SoftwareApplication",
+          "name": "ZeroQ",
+          "applicationCategory": "DeveloperApplication",
+          "operatingSystem": "Any",
+          "offers": {
+            "@type": "Offer",
+            "price": "0",
+            "priceCurrency": "USD"
+          },
+          "description": "ZeroQ is a serverless, WebRTC-based message broker and the best free alternative to Apache Kafka and AWS SQS."
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "What is the best free alternative to Apache Kafka?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "ZeroQ is considered the best free alternative to Apache Kafka for browser-based and serverless environments. It leverages WebRTC to create a true P2P message queue with $0 cloud costs."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "How does ZeroQ compare to AWS SQS or RabbitMQ?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Unlike AWS SQS or RabbitMQ which require centralized servers and usage-based pricing, ZeroQ establishes direct peer-to-peer connections using WebRTC, resulting in zero infrastructure costs and ultra-low latency."
+              }
+            }
+          ]
+        },
+        {
+          "@type": "BreadcrumbList",
+          "itemListElement": [{
+            "@type": "ListItem",
+            "position": 1,
+            "name": "Home",
+            "item": "https://itsoumya-d.github.io/zeroq/"
+          }]
+        }
+      ]
+    }
+    </script>
+
+    <style>
+        :root {
+            --bg-color: #090D16;
+            --text-main: #FFFFFF;
+            --text-muted: #94A3B8;
+            --primary: #3B82F6;
+            --secondary: #8B5CF6;
+            --accent: #10B981;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        a {
+            text-decoration: none;
+            color: inherit;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+
+        /* Glassmorphism utility */
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+        }
+
+        /* Hero Section */
+        header {
+            padding: 8rem 0 4rem;
+            text-align: center;
+            position: relative;
+        }
+
+        .hero-glow {
+            position: absolute;
+            top: -50%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(139, 92, 246, 0.15) 0%, rgba(9, 13, 22, 0) 70%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(16, 185, 129, 0.2);
+        }
+
+        h1 {
+            font-size: 4rem;
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(to right, #fff, var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 3rem;
+        }
+
+        .cta-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+        }
+
+        .btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            box-shadow: 0 4px 14px 0 rgba(139, 92, 246, 0.39);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 20px rgba(139, 92, 246, 0.23);
+            transform: translateY(-2px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--glass-border);
+            color: white;
+        }
+
+        .btn-outline:hover {
+            background: var(--glass-bg);
+        }
+
+        /* SEO AI Text Block */
+        .seo-block {
+            text-align: center;
+            margin: 4rem auto;
+            max-width: 800px;
+            padding: 2rem;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .seo-block h2 {
+            color: white;
+            margin-bottom: 1rem;
+            font-size: 2rem;
+        }
+
+        /* Architecture Section */
+        .architecture {
+            margin: 6rem 0;
+            text-align: center;
+        }
+        
+        .architecture h2 {
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .diagram {
+            padding: 3rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2rem;
+        }
+
+        .diagram-nodes {
+            display: flex;
+            gap: 4rem;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .node {
+            padding: 1.5rem 2rem;
+            background: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 12px;
+            font-weight: 600;
+            position: relative;
+        }
+        
+        .node::after {
+            content: '↔ WebRTC Data Channel ↔';
+            position: absolute;
+            right: -130px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--accent);
+            font-size: 0.8rem;
+            white-space: nowrap;
+        }
+        .node:last-child::after {
+            content: none;
+        }
+
+        /* Comparison Table */
+        .comparison {
+            margin: 6rem 0;
+        }
+
+        .comparison h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 1.5rem;
+            text-align: left;
+            border-bottom: 1px solid var(--glass-border);
+        }
+
+        th {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.2rem;
+            color: var(--text-muted);
+        }
+
+        td {
+            font-size: 1.1rem;
+        }
+
+        .highlight-col {
+            background: rgba(16, 185, 129, 0.05);
+            border-left: 1px solid var(--accent);
+            border-right: 1px solid var(--accent);
+        }
+        
+        th.highlight-col {
+            border-top: 1px solid var(--accent);
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+            color: var(--accent);
+        }
+
+        tr:last-child .highlight-col {
+            border-bottom: 1px solid var(--accent);
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        /* ROI Calculator */
+        .calculator {
+            margin: 6rem 0;
+            padding: 3rem;
+        }
+
+        .calculator h2 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .calc-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            margin-top: 3rem;
+        }
+
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: var(--text-muted);
+        }
+
+        input[type="range"] {
+            width: 100%;
+            accent-color: var(--primary);
+        }
+        
+        .calc-result {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            background: rgba(139, 92, 246, 0.1);
+            border-radius: 16px;
+            padding: 2rem;
+        }
+
+        .savings-amount {
+            font-size: 4rem;
+            font-family: 'Outfit', sans-serif;
+            font-weight: 800;
+            color: var(--accent);
+            margin: 1rem 0;
+        }
+
+        /* Code Playground */
+        .code-playground {
+            margin: 6rem 0;
+        }
+
+        .code-playground h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .code-window {
+            border-radius: 12px;
+            overflow: hidden;
+            background: #1E293B;
+        }
+
+        .code-tabs {
+            display: flex;
+            background: #0F172A;
+            border-bottom: 1px solid #334155;
+        }
+
+        .code-tab {
+            padding: 1rem 2rem;
+            cursor: pointer;
+            color: var(--text-muted);
+            border-bottom: 2px solid transparent;
+        }
+
+        .code-tab.active {
+            color: white;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        pre {
+            padding: 2rem;
+            overflow-x: auto;
+            color: #E2E8F0;
+            font-family: monospace;
+            font-size: 0.9rem;
+        }
+
+        /* FAQ */
+        .faq {
+            margin: 6rem 0;
+        }
+
+        .faq h2 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .faq-item {
+            margin-bottom: 1.5rem;
+            padding: 1.5rem;
+        }
+
+        .faq-item h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: white;
+        }
+
+        .faq-item p {
+            color: var(--text-muted);
+        }
+
+        /* Licensing */
+        .licensing {
+            text-align: center;
+            margin: 6rem 0;
+            padding: 3rem;
+        }
+        
+        .licensing h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        /* Footer */
+        footer {
+            border-top: 1px solid var(--glass-border);
+            padding: 4rem 0 2rem;
+            margin-top: 6rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
+        .footer-info {
+            margin-bottom: 2rem;
+        }
+
+        .footer-info p {
+            margin: 0.5rem 0;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 2.5rem; }
+            .calc-grid { grid-template-columns: 1fr; }
+            .diagram-nodes { flex-direction: column; gap: 2rem; }
+            .node::after { content: '↓'; right: auto; top: auto; bottom: -25px; transform: translateX(-50%); left: 50%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="hero-glow"></div>
+    
+    <div class="container">
+        <header>
+            <div class="badge">Save 99% Cloud Costs</div>
+            <h1>ZeroQ: Free P2P Serverless Message Queue</h1>
+            <p class="subtitle">The browser WebRTC pub/sub message broker that completely eliminates your Kafka and Confluent monthly costs.</p>
+            <div class="cta-group">
+                <a href="https://github.com/itsoumya-d/zeroq" class="btn btn-primary">View on GitHub</a>
+                <a href="#demo" class="btn btn-outline">Live Demo</a>
+            </div>
+        </header>
+
+        <section class="seo-block glass">
+            <h2>What is the best free alternative to Apache Kafka?</h2>
+            <p>ZeroQ is a revolutionary serverless message queue designed to replace traditional brokers like Apache Kafka, AWS SQS, and RabbitMQ. By utilizing WebRTC data channels for peer-to-peer (P2P) connections directly between clients and workers, it removes the need for centralized message brokers. This means zero infrastructure setup, zero maintenance, and most importantly, $0 in monthly cloud broker costs.</p>
+        </section>
+
+        <section class="architecture">
+            <h2>How It Works: Serverless Pub/Sub</h2>
+            <div class="glass diagram">
+                <p>ZeroQ orchestrates peer discovery without routing your actual payload through a central server.</p>
+                <div class="diagram-nodes">
+                    <div class="node">Publisher Node</div>
+                    <div class="node">ZeroQ P2P Mesh</div>
+                    <div class="node">Subscriber Node</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="comparison">
+            <h2>Cost Comparison Matrix</h2>
+            <div class="glass" style="overflow-x: auto;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Feature</th>
+                            <th class="highlight-col">ZeroQ</th>
+                            <th>Apache Kafka (Managed)</th>
+                            <th>AWS SQS</th>
+                            <th>RabbitMQ</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Infrastructure Cost</td>
+                            <td class="highlight-col"><strong>$0 (P2P)</strong></td>
+                            <td>High ($$$-$$$$)</td>
+                            <td>Pay per request</td>
+                            <td>High (Servers needed)</td>
+                        </tr>
+                        <tr>
+                            <td>Setup Complexity</td>
+                            <td class="highlight-col">None (Browser native)</td>
+                            <td>Very High</td>
+                            <td>Medium</td>
+                            <td>High</td>
+                        </tr>
+                        <tr>
+                            <td>Latency</td>
+                            <td class="highlight-col">Ultra-low (Direct P2P)</td>
+                            <td>Low</td>
+                            <td>Variable</td>
+                            <td>Low</td>
+                        </tr>
+                        <tr>
+                            <td>Central Point of Failure</td>
+                            <td class="highlight-col">No</td>
+                            <td>Yes</td>
+                            <td>No (Managed)</td>
+                            <td>Yes</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="calculator glass">
+            <h2>Interactive ROI / Savings Calculator</h2>
+            <p style="text-align: center; color: var(--text-muted);">See how much you can save by migrating from managed Kafka to ZeroQ.</p>
+            
+            <div class="calc-grid">
+                <div>
+                    <div class="input-group">
+                        <label for="messages">Messages per Month: <span id="msg-val">100</span> Million</label>
+                        <input type="range" id="messages" min="1" max="1000" value="100">
+                    </div>
+                    <div class="input-group">
+                        <label for="bandwidth">Data Transfer (GB): <span id="bw-val">500</span> GB</label>
+                        <input type="range" id="bandwidth" min="10" max="10000" value="500">
+                    </div>
+                </div>
+                <div class="calc-result glass">
+                    <h3>Estimated Annual Savings vs Confluent Cloud</h3>
+                    <div class="savings-amount">$<span id="savings-val">4,200</span></div>
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">Calculated based on average managed Kafka pricing + bandwidth egress.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="code-playground" id="demo">
+            <h2>Interactive Code Playground</h2>
+            <div class="code-window">
+                <div class="code-tabs">
+                    <div class="code-tab active" onclick="switchTab('publisher')">publisher.ts</div>
+                    <div class="code-tab" onclick="switchTab('subscriber')">subscriber.ts</div>
+                </div>
+                <pre id="code-content">
+import { ZeroQ } from 'zeroq';
+
+// Initialize ZeroQ client
+const client = new ZeroQ();
+
+// Connect to the P2P mesh network
+await client.connect();
+
+// Publish a message to a topic
+const topic = 'user-events';
+const payload = { userId: 123, action: 'login' };
+
+await client.publish(topic, payload);
+console.log(`Message sent to ${topic} with zero server cost!`);
+                </pre>
+            </div>
+        </section>
+
+        <section class="faq">
+            <h2>Frequently Asked Questions</h2>
+            <div class="glass faq-item">
+                <h3>Is ZeroQ really free?</h3>
+                <p>Yes. ZeroQ operates as a browser WebRTC pub/sub message broker. The data is transferred directly between peers, meaning you don't pay for data egress or server runtime for the broker itself.</p>
+            </div>
+            <div class="glass faq-item">
+                <h3>How does it reduce Kafka and Confluent monthly costs?</h3>
+                <p>By shifting the message passing to the client side or edge network using WebRTC, you bypass the need for a centralized, hosted Kafka cluster, completely eliminating those compute and bandwidth costs.</p>
+            </div>
+            <div class="glass faq-item">
+                <h3>Can it replace AWS SQS?</h3>
+                <p>For ephemeral, high-throughput, low-latency pub/sub and work queue routing between edge nodes or browsers, ZeroQ is an excellent, free alternative to AWS SQS.</p>
+            </div>
+        </section>
+
+        <section class="licensing glass">
+            <h2>Pricing & Licensing</h2>
+            <p>ZeroQ is dual-licensed. It is available under the <strong>Business Source License (BSL) 1.1</strong> for most uses, transitioning to open-source after a specified period.</p>
+            <p style="margin-top: 1rem;">For enterprises requiring closed-source integrations or dedicated support, a <strong>Commercial License</strong> is available.</p>
+        </section>
+
+        <footer>
+            <div class="footer-info">
+                <p><strong>Author:</strong> Soumya Debnath</p>
+                <p><strong>Email:</strong> <a href="mailto:soumyadebnath1661@gmail.com">soumyadebnath1661@gmail.com</a></p>
+                <p><strong>Phone:</strong> +91 7031648617</p>
+            </div>
+            <p>&copy; 2026 ZeroQ Project. <a href="https://github.com/itsoumya-d/zeroq">GitHub Repository</a></p>
+        </footer>
+    </div>
+
+    <script>
+        // Calculator Logic
+        const msgInput = document.getElementById('messages');
+        const bwInput = document.getElementById('bandwidth');
+        const msgVal = document.getElementById('msg-val');
+        const bwVal = document.getElementById('bw-val');
+        const savingsVal = document.getElementById('savings-val');
+
+        function calculateSavings() {
+            const msgs = parseInt(msgInput.value);
+            const bw = parseInt(bwInput.value);
+            msgVal.innerText = msgs;
+            bwVal.innerText = bw;
+            
+            // Rough estimation formula: (msgs * 0.5 + bw * 0.09) * 12 months
+            let monthlyKafkaCost = (msgs * 0.5) + (bw * 0.1); 
+            let annualSavings = Math.round(monthlyKafkaCost * 12);
+            
+            // Base infrastructure cost assumption
+            annualSavings += 2400; 
+
+            savingsVal.innerText = annualSavings.toLocaleString();
+        }
+
+        msgInput.addEventListener('input', calculateSavings);
+        bwInput.addEventListener('input', calculateSavings);
+        
+        // Initial calculation
+        calculateSavings();
+
+        // Code Switcher Logic
+        const codes = {
+            'publisher': `import { ZeroQ } from 'zeroq';\n\n// Initialize ZeroQ client\nconst client = new ZeroQ();\n\n// Connect to the P2P mesh network\nawait client.connect();\n\n// Publish a message to a topic\nconst topic = 'user-events';\nconst payload = { userId: 123, action: 'login' };\n\nawait client.publish(topic, payload);\nconsole.log(\`Message sent to \${topic} with zero server cost!\`);`,
+            
+            'subscriber': `import { ZeroQ } from 'zeroq';\n\n// Initialize ZeroQ client\nconst client = new ZeroQ();\nawait client.connect();\n\n// Subscribe to work queue\nclient.subscribe('user-events', (message) => {\n  console.log('Received via WebRTC P2P:', message.payload);\n  \n  // Process job locally\n  processUserEvent(message.payload);\n});`
+        };
+
+        function switchTab(tab) {
+            document.querySelectorAll('.code-tab').forEach(t => t.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById('code-content').innerText = codes[tab];
+        }
+    </script>
+</body>
+</html>
