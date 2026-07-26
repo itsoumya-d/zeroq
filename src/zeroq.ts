@@ -1,3 +1,4 @@
+import { LicenseValidator } from "./license-validator";
 // Copyright (c) 2024-2026 Soumya Debnath. All Rights Reserved.
 // Licensed under the Business Source License 1.1 (BSL 1.1).
 // See LICENSE file for details. Production use requires a paid license.
@@ -15,7 +16,9 @@ export class ZeroQ {
   private persistence: PersistenceLayer;
   private broker: MessageBroker;
 
-  constructor(discoveryUrl: string) {
+  constructor(options?: any) {
+    LicenseValidator.validate(options);
+    // constructor(discoveryUrl: string) {
     this.discoveryClient = new DiscoveryClient(discoveryUrl);
     this.persistence = new PersistenceLayer();
     this.peerMesh = new PeerMesh(this.discoveryClient);
