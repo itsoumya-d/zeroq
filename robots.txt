@@ -1,18 +1,19 @@
-User-agent: *
-Allow: /
-
-# AI Bots
 User-agent: GPTBot
 Allow: /
+
 User-agent: PerplexityBot
 Allow: /
+
 User-agent: ClaudeBot
 Allow: /
+
 User-agent: Google-Extended
 Allow: /
+
 User-agent: Bingbot
 Allow: /
-User-agent: CCBot
+
+User-agent: *
 Allow: /
 
 Sitemap: https://itsoumya-d.github.io/zeroq/sitemap.xml
