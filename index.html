@@ -1,503 +1,965 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZeroQ - High-Performance Message Queue</title>
-    <meta name="description" content="ZeroQ: Interactive Pub/Sub and Work Queue simulator with live particle streaming animation.">
-    <link rel="canonical" href="https://itsoumya-d.github.io/zeroq/" />
-    <meta property="og:title" content="ZeroQ - Message Broker Simulator">
-    <meta property="og:description" content="Next-gen interactive pub/sub broker built on top of IndexedDB and zero overhead.">
-    <meta property="og:type" content="website">
-    <meta name="twitter:card" content="summary_large_image">
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
-    
-    <style>
-        :root {
-            --bg-color: #080A0F;
-            --primary: #FF5722;
-            --secondary: #00BCD4;
-            --accent: #8E24AA;
-            --text-main: #ffffff;
-            --text-muted: #a0aabf;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZeroQ - Serverless P2P Message Queue</title>
+  <meta name="description" content="ZeroQ is the best free alternative to Kafka. A serverless, P2P message queue with zero servers, IndexedDB persistence, and ultra-low latency.">
+  <meta name="robots" content="index, follow">
+  
+  <!-- Open Graph -->
+  <meta property="og:title" content="ZeroQ - Serverless P2P Message Queue">
+  <meta property="og:description" content="Message queues without Kafka. Without servers. Pure peer-to-peer data flow.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://zeroq.com">
+  <meta property="og:image" content="https://zeroq.com/og-image.jpg">
 
-        body, html {
-            margin: 0;
-            padding: 0;
-            background: var(--bg-color);
-            color: var(--text-main);
-            font-family: 'Outfit', sans-serif;
-            overflow-x: hidden;
-            scroll-behavior: smooth;
-        }
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="ZeroQ - Serverless P2P Message Queue">
+  <meta name="twitter:description" content="Message queues without Kafka. Without servers. Pure peer-to-peer data flow.">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500&family=JetBrains+Mono:wght@400&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+  
+  <!-- GSAP -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
 
-        /* Glassmorphism */
-        .glass {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 16px;
-        }
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "ZeroQ",
+    "applicationCategory": "DeveloperApplication",
+    "operatingSystem": "Any",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "description": "Serverless P2P Message Queue without Kafka. Zero servers, IndexedDB persistence, and peer-to-peer delivery."
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [{
+      "@type": "Question",
+      "name": "What is the best free alternative to Kafka?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "ZeroQ is a powerful free alternative to Kafka, providing serverless, peer-to-peer message queuing with zero infrastructure costs and built-in IndexedDB persistence."
+      }
+    }]
+  }
+  </script>
 
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.5rem 0;
-        }
-
-        h1, h2, h3 {
-            margin: 0;
-            font-weight: 700;
-        }
-
-        .gradient-text {
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-
-        .btn {
-            background: linear-gradient(90deg, var(--primary), var(--accent));
-            color: white;
-            border: none;
-            padding: 0.8rem 1.5rem;
-            border-radius: 8px;
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-        }
-
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 15px rgba(255, 87, 34, 0.4);
-        }
-
-        /* Hero Section */
-        .hero {
-            text-align: center;
-            padding: 6rem 0;
-            position: relative;
-        }
-
-        .hero h1 {
-            font-size: 4rem;
-            margin-bottom: 1.5rem;
-        }
-
-        .hero p {
-            font-size: 1.2rem;
-            color: var(--text-muted);
-            max-width: 600px;
-            margin: 0 auto 3rem auto;
-        }
-
-        /* Demo Section */
-        .demo-section {
-            margin: 4rem 0;
-            padding: 2rem;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-
-        #particle-canvas {
-            width: 100%;
-            height: 400px;
-            border-radius: 12px;
-            background: #0d1117;
-            border: 1px solid rgba(0, 188, 212, 0.2);
-            box-shadow: 0 0 20px rgba(0, 188, 212, 0.1);
-            cursor: pointer;
-        }
-
-        .demo-controls {
-            display: flex;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
-
-        /* Calculator Section */
-        .calc-section {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin: 4rem 0;
-        }
-
-        .calc-card {
-            padding: 2rem;
-        }
-
-        .calc-card label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: var(--text-muted);
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .calc-card input {
-            width: 100%;
-            padding: 0.8rem;
-            margin-bottom: 1.5rem;
-            background: rgba(0, 0, 0, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: white;
-            border-radius: 6px;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        .roi-result {
-            font-size: 2rem;
-            color: var(--secondary);
-            font-weight: 700;
-        }
-
-        /* Code Switcher */
-        .code-section {
-            margin: 4rem 0;
-        }
-
-        .tabs {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1rem;
-        }
-
-        .tab {
-            padding: 0.5rem 1rem;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 4px;
-            cursor: pointer;
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--text-muted);
-        }
-
-        .tab.active {
-            background: var(--accent);
-            color: white;
-            border-color: var(--accent);
-        }
-
-        .code-block {
-            display: none;
-            padding: 2rem;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 0.9rem;
-            color: #a5d6ff;
-            background: #0d1117;
-            border-radius: 8px;
-            overflow-x: auto;
-        }
-
-        .code-block.active {
-            display: block;
-        }
-
-        /* Footer */
-        footer {
-            border-top: 1px solid rgba(255,255,255,0.05);
-            padding: 3rem 0;
-            text-align: center;
-            color: var(--text-muted);
-        }
-
-        .footer-details {
-            margin-top: 1.5rem;
-            font-size: 0.9rem;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* Glowing mesh gradients */
-        .mesh-bg {
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 50% 50%, rgba(142, 36, 170, 0.15) 0%, transparent 40%),
-                        radial-gradient(circle at 80% 20%, rgba(0, 188, 212, 0.1) 0%, transparent 30%);
-            z-index: -1;
-            pointer-events: none;
-        }
-    </style>
-
-    <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@graph": [
-        {
-          "@type": "SoftwareApplication",
-          "name": "ZeroQ",
-          "applicationCategory": "DeveloperApplication",
-          "operatingSystem": "Any",
-          "offers": {
-            "@type": "Offer",
-            "price": "0",
-            "priceCurrency": "USD"
-          }
-        },
-        {
-          "@type": "FAQPage",
-          "mainEntity": [{
-            "@type": "Question",
-            "name": "What is ZeroQ?",
-            "acceptedAnswer": {
-              "@type": "Answer",
-              "text": "ZeroQ is a high-performance pub/sub message broker with IndexedDB persistence."
-            }
-          }]
-        },
-        {
-          "@type": "BreadcrumbList",
-          "itemListElement": [{
-            "@type": "ListItem",
-            "position": 1,
-            "name": "Home",
-            "item": "https://itsoumya-d.github.io/zeroq/"
-          }]
-        }
-      ]
+  <style>
+    :root {
+      --bg-color: #080A0F;
+      --primary: #FF5722;
+      --secondary: #00BCD4;
+      --tertiary: #8E24AA;
+      --text-body: #CBD5E1;
+      --text-heading: #F1F5F9;
+      --border-color: rgba(255, 255, 255, 0.06);
+      --card-bg: rgba(255, 255, 255, 0.02);
+      
+      --font-heading: 'Outfit', sans-serif;
+      --font-body: 'Inter', sans-serif;
+      --font-code: 'JetBrains Mono', monospace;
     }
-    </script>
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-body);
+      font-family: var(--font-body);
+      font-weight: 300;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+      scroll-behavior: smooth;
+    }
+
+    /* Grid background */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100vw; height: 100vh;
+      background-image: radial-gradient(rgba(255,255,255,0.02) 1px, transparent 1px);
+      background-size: 32px 32px;
+      z-index: -2;
+      pointer-events: none;
+    }
+
+    /* Typography */
+    h1, h2, h3, h4 {
+      font-family: var(--font-heading);
+      color: var(--text-heading);
+      letter-spacing: -0.02em;
+    }
+
+    h1 { font-size: 80px; font-weight: 700; line-height: 1.1; }
+    h2 { font-size: 48px; font-weight: 700; line-height: 1.2; margin-bottom: 24px; }
+    h3 { font-size: 32px; font-weight: 500; line-height: 1.3; }
+    h4 { font-size: 24px; font-weight: 500; }
+    p { font-size: 16px; margin-bottom: 16px; }
+
+    @media (max-width: 768px) {
+      h1 { font-size: 48px; }
+      h2 { font-size: 32px; }
+    }
+
+    a {
+      color: var(--text-body);
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+    
+    a:hover {
+      color: var(--text-heading);
+    }
+
+    /* Layout */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    section {
+      padding: 120px 0;
+      position: relative;
+    }
+
+    /* Components */
+    .btn {
+      display: inline-block;
+      height: 48px;
+      padding: 0 32px;
+      line-height: 48px;
+      border-radius: 12px;
+      font-family: var(--font-heading);
+      font-weight: 500;
+      font-size: 16px;
+      cursor: pointer;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      border: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #D84315);
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(255, 87, 34, 0.15);
+    }
+
+    .btn-primary:hover {
+      transform: scale(1.02) translateY(-2px);
+      box-shadow: 0 8px 30px rgba(255, 87, 34, 0.25);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-heading);
+      border: 1px solid var(--border-color);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 4px 12px;
+      border-radius: 9999px;
+      font-size: 14px;
+      font-family: var(--font-code);
+      border: 1px solid var(--border-color);
+      background: rgba(0, 188, 212, 0.05);
+      color: var(--secondary);
+      margin-bottom: 24px;
+    }
+
+    .gradient-text {
+      background: linear-gradient(to right, var(--text-heading), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Navigation */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 64px;
+      background: rgba(8, 10, 15, 0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border-color);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+    }
+
+    .nav-inner {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      width: 100%;
+    }
+
+    .logo {
+      font-family: var(--font-heading);
+      font-size: 24px;
+      font-weight: 700;
+      color: var(--text-heading);
+      letter-spacing: -0.02em;
+    }
+    
+    .logo span {
+      color: var(--primary);
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 32px;
+    }
+
+    .nav-links a {
+      font-size: 14px;
+      font-weight: 500;
+    }
+
+    /* Hero */
+    .hero {
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding-top: 64px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 10;
+      max-width: 800px;
+    }
+
+    .hero p {
+      font-size: 20px;
+      color: var(--text-body);
+      max-width: 600px;
+      margin: 24px auto 48px;
+    }
+
+    .hero-btns {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+    }
+
+    /* Flow Demo */
+    .flow-demo {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.4;
+    }
+
+    .particle {
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: var(--secondary);
+      border-radius: 50%;
+      box-shadow: 0 0 15px var(--secondary);
+    }
+
+    /* Metrics */
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 32px;
+      border-top: 1px solid var(--border-color);
+      border-bottom: 1px solid var(--border-color);
+      padding: 64px 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.01), transparent);
+    }
+
+    .metric-card {
+      text-align: center;
+    }
+
+    .metric-value {
+      font-size: 64px;
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: var(--secondary);
+      margin-bottom: 8px;
+    }
+
+    .metric-label {
+      font-size: 16px;
+      color: var(--text-body);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    /* Cost Comparison */
+    .cost-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    .cost-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 48px 32px;
+      text-align: center;
+      transition: border-color 0.3s ease;
+    }
+    
+    .cost-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .cost-card.highlight {
+      border-color: var(--primary);
+      background: linear-gradient(180deg, rgba(255,87,34,0.05) 0%, rgba(255,87,34,0) 100%);
+    }
+
+    .cost-title {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text-body);
+      margin-bottom: 16px;
+    }
+
+    .cost-price {
+      font-size: 48px;
+      font-family: var(--font-heading);
+      font-weight: 700;
+      color: var(--text-heading);
+      margin-bottom: 24px;
+    }
+
+    .cost-card.highlight .cost-price {
+      color: var(--primary);
+    }
+
+    /* Architecture Tabs */
+    .tabs {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 32px;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 16px;
+    }
+
+    .tab-btn {
+      background: none;
+      border: none;
+      color: var(--text-body);
+      font-family: var(--font-heading);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 8px 16px;
+      border-radius: 8px;
+      transition: all 0.2s;
+    }
+
+    .tab-btn.active {
+      color: var(--secondary);
+      background: rgba(0, 188, 212, 0.1);
+    }
+
+    .tab-content {
+      display: none;
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 48px;
+      min-height: 300px;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Code Playground */
+    .code-block {
+      background: #0f111a;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 24px;
+      font-family: var(--font-code);
+      font-size: 14px;
+      color: #A6ACCD;
+      overflow-x: auto;
+      line-height: 1.6;
+    }
+    
+    .code-keyword { color: #89DDFF; }
+    .code-string { color: #C3E88D; }
+    .code-function { color: #82AAFF; }
+
+    /* Features */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    .feature-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 48px 32px;
+      transition: all 0.3s ease;
+    }
+
+    .feature-card:hover {
+      background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.1);
+      transform: translateY(-4px);
+    }
+
+    .feature-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: rgba(142, 36, 170, 0.1);
+      color: var(--tertiary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 24px;
+      font-size: 24px;
+    }
+
+    /* FAQ */
+    .faq-item {
+      border-bottom: 1px solid var(--border-color);
+      padding: 24px 0;
+    }
+    .faq-question {
+      font-size: 20px;
+      font-weight: 500;
+      color: var(--text-heading);
+      margin-bottom: 12px;
+    }
+    .faq-answer {
+      color: var(--text-body);
+    }
+
+    /* Pricing */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+      margin-top: 48px;
+    }
+
+    .pricing-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border-color);
+      border-radius: 16px;
+      padding: 48px 32px;
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .pricing-card ul {
+      list-style: none;
+      margin-top: 24px;
+      margin-bottom: 32px;
+      flex-grow: 1;
+    }
+    
+    .pricing-card ul li {
+      margin-bottom: 12px;
+      padding-left: 24px;
+      position: relative;
+    }
+    
+    .pricing-card ul li::before {
+      content: '✓';
+      position: absolute;
+      left: 0;
+      color: var(--secondary);
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border-color);
+      padding: 64px 0 32px;
+      background: #050608;
+    }
+    
+    .footer-grid {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 48px;
+      margin-bottom: 64px;
+    }
+    
+    .footer-bottom {
+      border-top: 1px solid var(--border-color);
+      padding-top: 24px;
+      text-align: center;
+      font-size: 14px;
+      color: rgba(255,255,255,0.4);
+    }
+
+    /* Utility */
+    .text-center { text-align: center; }
+    .mt-64 { margin-top: 64px; }
+  </style>
 </head>
 <body>
-    <div class="mesh-bg"></div>
 
-    <div class="container">
-        <header>
-            <h2>Zero<span style="color: var(--primary)">Q</span></h2>
-            <button class="btn">Get Started</button>
-        </header>
-
-        <section class="hero">
-            <h1>The Zero-Overhead <span class="gradient-text">Message Broker</span></h1>
-            <p>Seamlessly stream, queue, and persist messages using IndexedDB. Cut down AWS SQS and Kafka costs entirely for client-side topologies.</p>
-        </section>
-
-        <!-- Interactive Demo -->
-        <section class="demo-section glass">
-            <h3 style="margin-bottom: 1rem; text-align: center;">Live Pub/Sub Particle Stream</h3>
-            <p style="color: var(--text-muted); text-align: center; margin-bottom: 2rem;">Click to produce messages, watch consumers process them.</p>
-            <canvas id="particle-canvas"></canvas>
-            <div class="demo-controls">
-                <button class="btn" onclick="produceMessage()" style="background: var(--primary);">Produce Message</button>
-                <button class="btn" onclick="addConsumer()" style="background: var(--secondary);">Add Consumer</button>
-            </div>
-        </section>
-
-        <!-- ROI Calculator -->
-        <section class="calc-section">
-            <div class="calc-card glass">
-                <h3>Cloud Cost Calculator</h3>
-                <p style="color: var(--text-muted); margin-bottom: 2rem;">Compare ZeroQ against AWS SQS / Confluent Kafka</p>
-                
-                <label>Messages per month (Millions)</label>
-                <input type="number" id="msg-count" value="100" oninput="calculateROI()">
-                
-                <label>Average Payload Size (KB)</label>
-                <input type="number" id="payload-size" value="10" oninput="calculateROI()">
-            </div>
-            
-            <div class="calc-card glass" style="display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-                <h4>Monthly Savings with ZeroQ</h4>
-                <div class="roi-result" id="roi-value">$0.00</div>
-                <p style="color: var(--text-muted); margin-top: 1rem;">Based on standard SQS & egress pricing</p>
-            </div>
-        </section>
-
-        <!-- Code Switcher -->
-        <section class="code-section glass" style="padding: 2rem;">
-            <h3>Integration is a breeze</h3>
-            <div class="tabs" style="margin-top: 1.5rem;">
-                <div class="tab active" onclick="switchTab('producer')">producer.js</div>
-                <div class="tab" onclick="switchTab('consumer')">consumer.js</div>
-                <div class="tab" onclick="switchTab('persistence')">indexeddb.js</div>
-            </div>
-            
-            <div id="code-producer" class="code-block active">
-import { ZeroQ } from 'zeroq';
-
-const broker = new ZeroQ();
-await broker.connect();
-
-const topic = broker.topic('analytics-stream');
-await topic.publish({
-    event: 'page_view',
-    url: window.location.href,
-    timestamp: Date.now()
-});
-console.log('Message queued successfully');
-            </div>
-
-            <div id="code-consumer" class="code-block">
-import { ZeroQ } from 'zeroq';
-
-const broker = new ZeroQ();
-await broker.connect();
-
-broker.subscribe('analytics-stream', async (msg) => {
-    console.log('Processing:', msg.event);
-    await processAnalytics(msg);
-    msg.ack();
-});
-            </div>
-
-            <div id="code-persistence" class="code-block">
-// ZeroQ transparently handles IndexedDB sync
-const config = {
-    persistence: 'indexeddb',
-    dbName: 'zeroq-store',
-    maxQueueSize: 100000
-};
-
-const broker = new ZeroQ(config);
-// Offline messages are buffered and synced upon reconnection.
-            </div>
-        </section>
-
-        <footer>
-            <div class="footer-details">
-                <p>Designed & Engineered by <strong>Soumya Debnath</strong></p>
-                <p>Email: soumyadebnath1661@gmail.com | Phone: +91 7031648617</p>
-                <p>License: BSL 1.1 | Pricing: Free for Non-Production, Commercial licenses available.</p>
-            </div>
-        </footer>
+  <!-- Navigation -->
+  <nav>
+    <div class="container nav-inner">
+      <div class="logo">Zero<span>Q</span></div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#pricing">Pricing</a>
+      </div>
     </div>
+  </nav>
 
-    <script>
-        // Interactive Demo Logic
-        const canvas = document.getElementById('particle-canvas');
-        const ctx = canvas.getContext('2d');
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="flow-demo" id="flowDemo"></div>
+    <div class="container hero-content">
+      <div class="badge">v1.0.0 is Live</div>
+      <h1 class="hero-title">Message queues without Kafka.<br><span class="gradient-text">Without servers.</span></h1>
+      <p class="hero-desc">The first fully serverless, peer-to-peer message queue. Built for the modern edge with IndexedDB persistence and zero infrastructure configuration.</p>
+      <div class="hero-btns">
+        <a href="#get-started" class="btn btn-primary">Start Building Free</a>
+        <a href="#docs" class="btn btn-secondary">Read Documentation</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Metrics Section -->
+  <section class="container">
+    <div class="metrics">
+      <div class="metric-card gsap-fade-up">
+        <div class="metric-value" data-val="0">0</div>
+        <div class="metric-label">Servers Required</div>
+      </div>
+      <div class="metric-card gsap-fade-up">
+        <div class="metric-value" data-val="100">100</div>
+        <div class="metric-label">% IndexedDB Persistent</div>
+      </div>
+      <div class="metric-card gsap-fade-up">
+        <div class="metric-value" data-val="1">1</div>
+        <div class="metric-label">ms P2P Delivery</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cost Section -->
+  <section id="cost" class="container">
+    <div class="text-center gsap-fade-up">
+      <div class="badge">TCO Comparison</div>
+      <h2>Stop paying for idle brokers</h2>
+    </div>
+    <div class="cost-grid">
+      <div class="cost-card gsap-fade-up">
+        <div class="cost-title">AWS SQS</div>
+        <div class="cost-price">$20K<span style="font-size: 20px; color: var(--text-body); font-weight: 400;">/yr</span></div>
+        <p>Complex IAM, region-locked, variable pricing based on requests.</p>
+      </div>
+      <div class="cost-card highlight gsap-fade-up">
+        <div class="cost-title">ZeroQ</div>
+        <div class="cost-price">$0<span style="font-size: 20px; color: var(--text-body); font-weight: 400;">/yr</span></div>
+        <p>Peer-to-peer, offline-first, completely free for standard usage.</p>
+      </div>
+      <div class="cost-card gsap-fade-up">
+        <div class="cost-title">Confluent Kafka</div>
+        <div class="cost-price">$120K<span style="font-size: 20px; color: var(--text-body); font-weight: 400;">/yr</span></div>
+        <p>Heavy infrastructure, high baseline cost, overkill for most apps.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Architecture Section -->
+  <section id="architecture" class="container">
+    <div class="text-center gsap-fade-up">
+      <h2>Architecture Patterns</h2>
+      <p>Flexible messaging for any edge topology.</p>
+    </div>
+    
+    <div class="mt-64 gsap-fade-up">
+      <div class="tabs">
+        <button class="tab-btn active" data-target="tab-pubsub">Pub/Sub</button>
+        <button class="tab-btn" data-target="tab-work">Work Queue</button>
+        <button class="tab-btn" data-target="tab-fanout">Fan-out</button>
+      </div>
+      
+      <div id="tab-pubsub" class="tab-content active">
+        <h3>Publish / Subscribe</h3>
+        <p>Decouple your producers and consumers seamlessly across client tabs, workers, and iframes.</p>
+      </div>
+      <div id="tab-work" class="tab-content">
+        <h3>Work Queue</h3>
+        <p>Distribute resource-intensive tasks among multiple Web Workers. ZeroQ handles round-robin distribution automatically.</p>
+      </div>
+      <div id="tab-fanout" class="tab-content">
+        <h3>Fan-out Exchange</h3>
+        <p>Broadcast messages to multiple independent queues simultaneously for parallel processing flows.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Code Playground -->
+  <section class="container">
+    <div class="text-center gsap-fade-up">
+      <h2>Developer Experience</h2>
+      <p>Clean, intuitive API inspired by standard queue interfaces.</p>
+    </div>
+    
+    <div class="mt-64 gsap-fade-up">
+      <div class="tabs">
+        <button class="tab-btn active" data-target="code-pub">Publish</button>
+        <button class="tab-btn" data-target="code-sub">Subscribe</button>
+        <button class="tab-btn" data-target="code-dlq">DLQ</button>
+        <button class="tab-btn" data-target="code-persist">Persist</button>
+      </div>
+      
+      <div id="code-pub" class="tab-content active" style="padding: 0; background: transparent; border: none;">
+        <div class="code-block">
+<span class="code-keyword">import</span> { ZeroQ } <span class="code-keyword">from</span> <span class="code-string">'@zeroq/core'</span>;
+
+<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({ name: <span class="code-string">'orders'</span> });
+
+<span class="code-keyword">await</span> q.<span class="code-function">publish</span>({
+  id: <span class="code-string">'ord_123'</span>,
+  amount: 49.99,
+  status: <span class="code-string">'pending'</span>
+});
+        </div>
+      </div>
+      <div id="code-sub" class="tab-content" style="padding: 0; background: transparent; border: none;">
+        <div class="code-block">
+<span class="code-keyword">import</span> { ZeroQ } <span class="code-keyword">from</span> <span class="code-string">'@zeroq/core'</span>;
+
+<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({ name: <span class="code-string">'orders'</span> });
+
+q.<span class="code-function">subscribe</span>(<span class="code-keyword">async</span> (msg) => {
+  <span class="code-function">console.log</span>(<span class="code-string">'Received order:'</span>, msg.data.id);
+  <span class="code-keyword">await</span> <span class="code-function">processOrder</span>(msg.data);
+  msg.<span class="code-function">ack</span>();
+});
+        </div>
+      </div>
+      <div id="code-dlq" class="tab-content" style="padding: 0; background: transparent; border: none;">
+        <div class="code-block">
+<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({ 
+  name: <span class="code-string">'orders'</span>,
+  deadLetterExchange: <span class="code-string">'orders_dlq'</span>,
+  maxRetries: 3
+});
+        </div>
+      </div>
+      <div id="code-persist" class="tab-content" style="padding: 0; background: transparent; border: none;">
+        <div class="code-block">
+<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({ 
+  name: <span class="code-string">'orders'</span>,
+  storage: <span class="code-string">'indexeddb'</span>, // Persists across reloads
+  sync: <span class="code-string">'webrtc'</span>      // P2P sync across devices
+});
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features Section -->
+  <section id="features" class="container">
+    <div class="text-center gsap-fade-up">
+      <h2>Enterprise Grade. Zero Servers.</h2>
+    </div>
+    
+    <div class="feature-grid">
+      <div class="feature-card gsap-fade-up">
+        <div class="feature-icon">⚡</div>
+        <h3>P2P Sync</h3>
+        <p>Messages flow directly between clients via WebRTC. No central broker bottlenecks.</p>
+      </div>
+      <div class="feature-card gsap-fade-up">
+        <div class="feature-icon">💀</div>
+        <h3>DLQ Support</h3>
+        <p>Built-in Dead Letter Queues catch failed messages automatically after max retries.</p>
+      </div>
+      <div class="feature-card gsap-fade-up">
+        <div class="feature-icon">💾</div>
+        <h3>Persistent Storage</h3>
+        <p>Backed by IndexedDB to survive page reloads and browser restarts flawlessly.</p>
+      </div>
+      <div class="feature-card gsap-fade-up">
+        <div class="feature-icon">🌊</div>
+        <h3>Backpressure</h3>
+        <p>Intelligent flow control prevents fast producers from overwhelming slow consumers.</p>
+      </div>
+      <div class="feature-card gsap-fade-up">
+        <div class="feature-icon">⭐</div>
+        <h3>Priority Queues</h3>
+        <p>Ensure critical events bypass standard traffic with strict priority tiering.</p>
+      </div>
+      <div class="feature-card gsap-fade-up">
+        <div class="feature-icon">🔄</div>
+        <h3>Multi-topic Routing</h3>
+        <p>Advanced wildcard routing keys and topic exchanges out of the box.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ Section -->
+  <section class="container">
+    <div class="text-center gsap-fade-up">
+      <h2>Frequently Asked Questions</h2>
+    </div>
+    <div class="mt-64 max-w-800" style="max-width: 800px; margin-left: auto; margin-right: auto;">
+      <div class="faq-item gsap-fade-up">
+        <div class="faq-question">What is the best free alternative to Kafka?</div>
+        <div class="faq-answer">ZeroQ is widely considered a top free alternative to Kafka for frontend, edge, and serverless architectures. By removing the need for a JVM, Zookeeper, or expensive brokers, ZeroQ provides a pure peer-to-peer messaging experience that costs nothing to run.</div>
+      </div>
+      <div class="faq-item gsap-fade-up">
+        <div class="faq-question">How does it persist messages without a server?</div>
+        <div class="faq-answer">ZeroQ utilizes the browser's native IndexedDB to durably store messages locally. Across distributed clients, it employs WebRTC data channels to replicate state securely.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing Section -->
+  <section id="pricing" class="container">
+    <div class="text-center gsap-fade-up">
+      <h2>Simple Licensing</h2>
+      <p>Licensed under BSL 1.1. Free for most, reasonable for enterprise.</p>
+    </div>
+    
+    <div class="pricing-grid">
+      <div class="pricing-card gsap-fade-up">
+        <h3>Indie / Startup</h3>
+        <div class="cost-price">$299<span style="font-size: 16px; font-weight:400; color:var(--text-body);"> / license</span></div>
+        <ul>
+          <li>Unlimited local queues</li>
+          <li>Community Support</li>
+          <li>Standard P2P Features</li>
+        </ul>
+        <button class="btn btn-secondary">Buy Indie License</button>
+      </div>
+      <div class="pricing-card highlight gsap-fade-up">
+        <h3>Pro</h3>
+        <div class="cost-price">$1,999<span style="font-size: 16px; font-weight:400; color:var(--text-body);"> / license</span></div>
+        <ul>
+          <li>Advanced Routing</li>
+          <li>Priority Queues</li>
+          <li>Email Support</li>
+        </ul>
+        <button class="btn btn-primary">Buy Pro License</button>
+      </div>
+      <div class="pricing-card gsap-fade-up">
+        <h3>Enterprise</h3>
+        <div class="cost-price">$9,999<span style="font-size: 16px; font-weight:400; color:var(--text-body);"> / license</span></div>
+        <ul>
+          <li>Custom SLA</li>
+          <li>Dedicated Account Manager</li>
+          <li>Custom Connectors</li>
+        </ul>
+        <button class="btn btn-secondary">Contact Sales</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-grid">
+        <div>
+          <div class="logo">Zero<span>Q</span></div>
+          <p style="margin-top: 16px; color: rgba(255,255,255,0.6);">The serverless, edge-native message queue for modern architectures.</p>
+        </div>
+        <div>
+          <h4 style="margin-bottom: 16px;">Product</h4>
+          <p><a href="#">Documentation</a></p>
+          <p><a href="#">API Reference</a></p>
+          <p><a href="#">Examples</a></p>
+        </div>
+        <div>
+          <h4 style="margin-bottom: 16px;">Company</h4>
+          <p><a href="#">About</a></p>
+          <p><a href="#">Blog</a></p>
+          <p><a href="#">Contact</a></p>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        &copy; 2026 ZeroQ. All rights reserved. BSL 1.1 License.
+      </div>
+    </div>
+  </footer>
+
+  <script>
+    gsap.registerPlugin(ScrollTrigger);
+
+    // Hero Text Animation
+    const heroTitle = document.querySelector('.hero-title');
+    if (heroTitle) {
+      // Simple split text simulation for animation
+      const text = heroTitle.innerHTML;
+      // Not actually splitting characters here to keep it robust, just fading up the whole block for simplicity,
+      // but let's animate the lines if possible, or just a simple GSAP tween
+      gsap.from(heroTitle, {
+        y: 40,
+        opacity: 0,
+        duration: 1,
+        ease: "power3.out",
+        delay: 0.2
+      });
+      gsap.from('.hero-desc', {
+        y: 40,
+        opacity: 0,
+        duration: 1,
+        ease: "power3.out",
+        delay: 0.4
+      });
+      gsap.from('.hero-btns', {
+        y: 40,
+        opacity: 0,
+        duration: 1,
+        ease: "power3.out",
+        delay: 0.6
+      });
+    }
+
+    // Scroll Fade Up Elements
+    gsap.utils.toArray('.gsap-fade-up').forEach((element, i) => {
+      gsap.from(element, {
+        scrollTrigger: {
+          trigger: element,
+          start: "top 85%",
+        },
+        y: 60,
+        opacity: 0,
+        duration: 0.8,
+        ease: "power3.out"
+      });
+    });
+
+    // Particle Flow Demo in Hero
+    const demo = document.getElementById('flowDemo');
+    if (demo) {
+      for(let i=0; i<30; i++) {
+        let p = document.createElement('div');
+        p.className = 'particle';
+        demo.appendChild(p);
         
-        function resizeCanvas() {
-            canvas.width = canvas.clientWidth;
-            canvas.height = canvas.clientHeight;
-        }
-        window.addEventListener('resize', resizeCanvas);
-        resizeCanvas();
+        // Randomize start pos
+        let startX = Math.random() * window.innerWidth;
+        let startY = Math.random() * (window.innerHeight / 2);
+        
+        gsap.set(p, {
+          x: startX,
+          y: startY,
+          opacity: 0
+        });
 
-        let particles = [];
-        let consumers = [{ x: canvas.width * 0.8, y: canvas.height * 0.5 }];
-        const producerPos = { x: canvas.width * 0.2, y: canvas.height * 0.5 };
+        gsap.to(p, {
+          x: `+=${(Math.random() * 400) - 200}`,
+          y: `+=${(Math.random() * 400) + 200}`,
+          opacity: Math.random() * 0.8 + 0.2,
+          duration: Math.random() * 3 + 2,
+          repeat: -1,
+          yoyo: true,
+          ease: "sine.inOut",
+          delay: Math.random() * 2
+        });
+      }
+    }
 
-        function produceMessage() {
-            const colors = ['#FF5722', '#00BCD4', '#8E24AA'];
-            const targetConsumer = consumers[Math.floor(Math.random() * consumers.length)];
-            
-            particles.push({
-                x: producerPos.x,
-                y: producerPos.y + (Math.random() * 40 - 20),
-                targetX: targetConsumer.x,
-                targetY: targetConsumer.y,
-                color: colors[Math.floor(Math.random() * colors.length)],
-                speed: 2 + Math.random() * 2,
-                size: 4 + Math.random() * 4,
-                active: true
-            });
-        }
+    // Tabs functionality
+    const setupTabs = (btnSelector, contentIdPrefix) => {
+      const btns = document.querySelectorAll(btnSelector);
+      btns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          // Remove active from sibling btns
+          const parent = btn.parentElement;
+          parent.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          // Hide all contents in the section
+          const targetId = btn.getAttribute('data-target');
+          const targetContent = document.getElementById(targetId);
+          if(targetContent) {
+            const allContents = targetContent.parentElement.querySelectorAll('.tab-content');
+            allContents.forEach(c => c.classList.remove('active'));
+            targetContent.classList.add('active');
+          }
+        });
+      });
+    };
+    
+    // Architecture tabs
+    setupTabs('#architecture .tab-btn');
+    // Code tabs
+    setupTabs('.code-playground .tab-btn'); // Actually used broad selector in HTML, fixing dynamically
+    
+    document.querySelectorAll('.tabs').forEach(tabGroup => {
+      const btns = tabGroup.querySelectorAll('.tab-btn');
+      btns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          btns.forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          const targetId = btn.getAttribute('data-target');
+          const allContents = tabGroup.parentElement.querySelectorAll('.tab-content');
+          allContents.forEach(c => c.classList.remove('active'));
+          document.getElementById(targetId).classList.add('active');
+        });
+      });
+    });
 
-        function addConsumer() {
-            if (consumers.length < 5) {
-                consumers.push({
-                    x: canvas.width * 0.8,
-                    y: canvas.height * (0.2 + Math.random() * 0.6)
-                });
+    // CountUp simulation on scroll
+    gsap.utils.toArray('.metric-value').forEach(el => {
+      let targetVal = parseInt(el.getAttribute('data-val'));
+      ScrollTrigger.create({
+        trigger: el,
+        start: "top 85%",
+        onEnter: () => {
+          let obj = { val: 0 };
+          gsap.to(obj, {
+            val: targetVal,
+            duration: 2,
+            ease: "power2.out",
+            onUpdate: () => {
+              el.innerText = targetVal === 0 ? obj.val.toFixed(0) : (targetVal === 100 ? obj.val.toFixed(0) : obj.val.toFixed(0));
             }
-        }
-
-        canvas.addEventListener('click', produceMessage);
-
-        function animate() {
-            ctx.fillStyle = 'rgba(13, 17, 23, 0.2)';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Draw Producer
-            ctx.fillStyle = '#FF5722';
-            ctx.beginPath();
-            ctx.arc(producerPos.x, producerPos.y, 20, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.fillStyle = 'white';
-            ctx.fillText('PRODUCER', producerPos.x - 30, producerPos.y - 30);
-
-            // Draw Consumers
-            consumers.forEach((c, i) => {
-                ctx.fillStyle = '#00BCD4';
-                ctx.beginPath();
-                ctx.arc(c.x, c.y, 20, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.fillStyle = 'white';
-                ctx.fillText(`C${i+1}`, c.x - 10, c.y - 30);
-            });
-
-            // Update & Draw Particles
-            particles.forEach((p, i) => {
-                if (!p.active) return;
-                
-                const dx = p.targetX - p.x;
-                const dy = p.targetY - p.y;
-                const dist = Math.sqrt(dx * dx + dy * dy);
-                
-                if (dist < 10) {
-                    p.active = false;
-                    // Flash consumer
-                    ctx.fillStyle = p.color;
-                    ctx.beginPath();
-                    ctx.arc(p.targetX, p.targetY, 25, 0, Math.PI * 2);
-                    ctx.fill();
-                    return;
-                }
-
-                p.x += (dx / dist) * p.speed;
-                p.y += (dy / dist) * p.speed;
-
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-            });
-
-            particles = particles.filter(p => p.active);
-
-            // Automatic background traffic
-            if (Math.random() < 0.05) produceMessage();
-
-            requestAnimationFrame(animate);
-        }
-        animate();
-
-        // ROI Calculator Logic
-        function calculateROI() {
-            const msgs = parseFloat(document.getElementById('msg-count').value) || 0;
-            const size = parseFloat(document.getElementById('payload-size').value) || 0;
-            
-            // Very rough SQS estimate: $0.40 per 1M requests, plus some data transfer
-            const sqsCost = (msgs * 0.40) + (msgs * size * 0.00009); // dummy formula
-            document.getElementById('roi-value').innerText = '$' + sqsCost.toFixed(2);
-        }
-        calculateROI();
-
-        // Tab Logic
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.code-block').forEach(c => c.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById('code-' + tabId).classList.add('active');
-        }
-    </script>
+          });
+        },
+        once: true
+      });
+    });
+  </script>
 </body>
 </html>
