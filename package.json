@@ -1,0 +1,16 @@
+{
+  "name": "zeroq",
+  "version": "1.0.0",
+  "description": "Serverless, peer-to-peer message queue replacing Kafka/SQS",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.2",
+    "typescript": "^5.3.3"
+  }
+}
