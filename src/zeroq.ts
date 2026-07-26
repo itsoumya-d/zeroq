@@ -46,7 +46,7 @@ export class ZeroQ {
     await this.broker.publish(queue, message); // Simplified mapping queue to topic internally
   }
 
-  async consume(queue: string, handler: (msg: Message, ack: () => void) => void): Promise<Consumer> {
+  async consume(queue: string, handler: (msg: Message, ack: () => void, nack: () => void) => void): Promise<Consumer> {
     this.discoveryClient.send({ type: 'consume', queue });
     return this.broker.consume(queue, handler);
   }

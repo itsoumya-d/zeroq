@@ -40,11 +40,11 @@ func (c *Client) readPump() {
 		if err := json.Unmarshal(message, &msg); err == nil {
 			if msgType, ok := msg["type"].(string); ok {
 				c.broker.mu.Lock()
-				if msgType == "create_topic" {
+				if msgType == "create_topic" || msgType == "subscribe" {
 					if t, ok := msg["topic"].(string); ok {
 						c.broker.topics[t] = true
 					}
-				} else if msgType == "create_queue" {
+				} else if msgType == "create_queue" || msgType == "consume" {
 					if q, ok := msg["queue"].(string); ok {
 						c.broker.queues[q] = true
 					}

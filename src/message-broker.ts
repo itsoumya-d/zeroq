@@ -28,10 +28,21 @@ export class MessageBroker {
       // Round-robin
       const handler = handlers.shift();
       if (handler) {
-        handler(msg, async () => {
-           // ack
-           await this.persistence.delete(msg.id);
-        });
+        handler(
+          msg, 
+          async () => {
+            // ack
+            await this.persistence.delete(msg.id);
+          },
+          async () => {
+            // nack
+            msg.retryCount++;
+            await this.persistence.save(msg);
+            if (msg.retryCount < 3) {
+              this.peerMesh.sendToAll(Serializer.serialize(msg));
+            }
+          }
+        );
         handlers.push(handler);
       }
     }
@@ -66,7 +77,7 @@ export class MessageBroker {
     };
   }
 
-  consume(queue: string, handler: (msg: Message, ack: () => void) => void): Consumer {
+  consume(queue: string, handler: (msg: Message, ack: () => void, nack: () => void) => void): Consumer {
     if (!this.queueHandlers.has(queue)) {
       this.queueHandlers.set(queue, []);
     }
