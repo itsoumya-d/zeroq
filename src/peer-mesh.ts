@@ -213,11 +213,10 @@ export class PeerMesh extends EventEmitter {
 
   private removePeer(peerId: string) {
     const peer = this.peers.get(peerId);
-    if (peer) {
-      peer.dc.close();
-      peer.pc.close();
-      this.peers.delete(peerId);
-    }
+    if (!peer) return; // Already removed — prevent double-fire
+    this.peers.delete(peerId); // Delete FIRST to prevent re-entry
+    try { peer.dc.close(); } catch {}
+    try { peer.pc.close(); } catch {}
     const interval = this.pingIntervals.get(peerId);
     if (interval) {
       clearInterval(interval);
