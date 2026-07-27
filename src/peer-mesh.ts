@@ -14,6 +14,7 @@ export class PeerMesh extends EventEmitter {
   private pingIntervals: Map<string, any> = new Map();
   private discoveryUrl: string = '';
   private topicId: string = '';
+  private wsReconnectAttempts: number = 0;
 
   constructor() {
     super();
@@ -26,6 +27,7 @@ export class PeerMesh extends EventEmitter {
     this.ws = new WebSocket(discoveryUrl);
     
     this.ws.onopen = () => {
+      this.wsReconnectAttempts = 0;
       this.ws?.send(JSON.stringify({ type: 'join', topicId }));
     };
 
@@ -47,11 +49,18 @@ export class PeerMesh extends EventEmitter {
             await this.handleIceCandidate(msg.peerId, msg.candidate);
             break;
         }
-      } catch (err) {}
+      } catch (err) { console.warn('ZeroQ: WebSocket message parse error', err); }
     };
 
     this.ws.onclose = () => {
-      setTimeout(() => this.connect(discoveryUrl, topicId), 5000);
+      if (this.wsReconnectAttempts >= 10) {
+        console.warn('ZeroQ: Max WebSocket reconnect attempts reached');
+        this.emit('connection_failed', 'Max reconnect attempts');
+        return;
+      }
+      const backoff = Math.min(1000 * Math.pow(2, this.wsReconnectAttempts), 30000);
+      this.wsReconnectAttempts++;
+      setTimeout(() => this.connect(discoveryUrl, topicId), backoff);
     };
   }
 
@@ -157,8 +166,9 @@ export class PeerMesh extends EventEmitter {
       }, 10000);
       this.pingIntervals.set(peerId, interval);
 
-      const peersArray = Array.from(this.knownPeers);
-      dc.send(JSON.stringify({ type: '__gossip__', peers: peersArray }));
+      const allPeers = Array.from(this.knownPeers);
+      const gossipPeers = allPeers.length <= 10 ? allPeers : allPeers.sort(() => Math.random() - 0.5).slice(0, 10);
+      dc.send(JSON.stringify({ type: '__gossip__', peers: gossipPeers }));
     };
 
     dc.onmessage = (e) => {
@@ -231,7 +241,12 @@ export class PeerMesh extends EventEmitter {
   broadcast(data: string | ArrayBuffer) {
     for (const { dc } of this.peers.values()) {
       if (dc.readyState === 'open') {
-        dc.send(data as any);
+        if (dc.bufferedAmount > 65536) continue;
+        try {
+          dc.send(data as any);
+        } catch (err) {
+          console.warn('ZeroQ: broadcast error', err);
+        }
       }
     }
   }
@@ -239,7 +254,12 @@ export class PeerMesh extends EventEmitter {
   sendToPeer(peerId: string, data: string | ArrayBuffer) {
     const peer = this.peers.get(peerId);
     if (peer && peer.dc.readyState === 'open') {
-      peer.dc.send(data as any);
+      if (peer.dc.bufferedAmount > 65536) return;
+      try {
+        peer.dc.send(data as any);
+      } catch (err) {
+        console.warn('ZeroQ: sendToPeer error', err);
+      }
     }
   }
 
