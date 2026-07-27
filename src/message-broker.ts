@@ -13,6 +13,8 @@ export class MessageBroker {
   private persistence: PersistenceLayer;
   private topicHandlers: Map<string, Function[]> = new Map();
   private queueHandlers: Map<string, Function[]> = new Map();
+  private seenMessages: Set<string> = new Set();
+  private seenMessagesQueue: string[] = [];
 
   constructor(peerMesh: PeerMesh, persistence: PersistenceLayer) {
     this.peerMesh = peerMesh;
@@ -21,8 +23,27 @@ export class MessageBroker {
     this.peerMesh.on('message_received', this.handleMessage.bind(this));
   }
 
+  private trackMessage(id: string): boolean {
+    if (this.seenMessages.has(id)) {
+      return false; // Already seen
+    }
+    this.seenMessages.add(id);
+    this.seenMessagesQueue.push(id);
+    if (this.seenMessagesQueue.length > 10000) {
+      const oldest = this.seenMessagesQueue.shift();
+      if (oldest) this.seenMessages.delete(oldest);
+    }
+    return true;
+  }
+
   private async handleMessage(data: string) {
     const msg = Serializer.deserialize(data);
+    
+    if (!this.trackMessage(msg.id)) {
+      return;
+    }
+    
+    await this.persistence.save(msg);
     
     if (this.topicHandlers.has(msg.topic)) {
       this.topicHandlers.get(msg.topic)!.forEach(h => h(msg));
@@ -30,21 +51,18 @@ export class MessageBroker {
     
     if (this.queueHandlers.has(msg.topic)) {
       const handlers = this.queueHandlers.get(msg.topic)!;
-      // Round-robin
       const handler = handlers.shift();
       if (handler) {
         handler(
           msg, 
           async () => {
-            // ack
             await this.persistence.delete(msg.id);
           },
           async () => {
-            // nack
             msg.retryCount++;
             await this.persistence.save(msg);
             if (msg.retryCount < 3) {
-              this.peerMesh.sendToAll(Serializer.serialize(msg));
+              this.peerMesh.broadcast(Serializer.serialize(msg));
             }
           }
         );
@@ -63,8 +81,9 @@ export class MessageBroker {
       retryCount: 0
     };
     
+    this.trackMessage(msg.id);
     await this.persistence.save(msg);
-    this.peerMesh.sendToAll(Serializer.serialize(msg));
+    this.peerMesh.broadcast(Serializer.serialize(msg));
   }
 
   subscribe(topic: string, handler: (msg: Message) => void): Subscription {

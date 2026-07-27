@@ -1,3 +1,10 @@
+<!--
+// Copyright (c) 2024-2026 Soumya Debnath. All Rights Reserved.
+// Licensed under the Business Source License 1.1 (BSL 1.1).
+// See LICENSE file for details. Production use requires a paid license.
+// Contact: soumyadebnath1661@gmail.com | +91 7031648617
+-->
+
 <div align="center">
   <h1>ZeroQ</h1>
   <p><b>Serverless P2P Message Queue Replacing Kafka and AWS SQS at $0</b></p>
@@ -94,6 +101,43 @@ graph TD
         Broker --> Mesh[Peer Mesh]
         Broker --> IDB[(IndexedDB Persistence)]
     end
+```
+
+---
+
+## 🔬 WebRTC Mesh Network & Kademlia DHT Research
+
+ZeroQ builds on peer-to-peer distributed hash table (DHT) algorithms and gossip mesh networks to guarantee resilient, serverless message queue delivery.
+
+### 🕸️ Full WebRTC Peer Mesh & Gossip Protocol
+- **Gossip Discovery**: Peer discovery over WebRTC DataChannels using gossip protocols. Connected nodes dynamically discover and route messages through optimal mesh paths.
+- **Continuous Health Monitoring**: Ping/pong health checks with 5-second interval heartbeats monitor peer latency and drop unhealthy links automatically.
+
+### 🛡️ Message Deduplication & Memory Management
+- **10K Message ID Tracking**: Fixed-capacity sliding window LRU cache tracking the last 10,000 unique message UUIDs, preventing broadcast loops and redundant queue consumption across dense mesh networks.
+
+### 🔄 Auto-Reconnect Engine (Exponential Backoff + Full Jitter)
+- **Automatic Network Recovery**: Reconnection algorithm featuring exponential backoff with randomized full jitter ($T_{backoff} = \min(T_{max}, T_{base} \times 2^{\text{attempt}}) \pm \text{jitter}$), protecting signaling nodes from thundering herd spikes during network reconnects.
+
+### 🔬 Research Foundation
+> **Research Citation:**  
+> Maymounkov, P., & Mazières, D. (2002). *Kademlia: A Peer-to-Peer Information System Based on the XOR Metric*. International Workshop on Peer-to-Peer Systems (IPTPS 2002). [kademlia.scs.stanford.edu](https://kademlia.scs.stanford.edu)
+
+### 💻 Usage Example: Mesh Gossip, Deduplication & Auto-Reconnect
+
+```typescript
+import { ZeroQ } from 'zeroq';
+
+const zeroq = new ZeroQ('ws://discovery.yourdomain.com/ws', {
+  meshTopology: 'gossip',
+  dedupCapacity: 10000, // Tracks 10K message IDs for deduplication
+  autoReconnect: true,
+  backoffMaxMs: 30000
+});
+
+await zeroq.subscribe('orders.processed', (msg) => {
+  console.log('Processed order:', msg.payload);
+});
 ```
 
 ---

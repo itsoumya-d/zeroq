@@ -18,10 +18,10 @@ export class ZeroQ {
 
   constructor(options?: any) {
     LicenseValidator.validate(options);
-    // constructor(discoveryUrl: string) {
+    const discoveryUrl = options?.discoveryUrl || 'ws://localhost:8080';
     this.discoveryClient = new DiscoveryClient(discoveryUrl);
     this.persistence = new PersistenceLayer();
-    this.peerMesh = new PeerMesh(this.discoveryClient);
+    this.peerMesh = new PeerMesh();
     this.broker = new MessageBroker(this.peerMesh, this.persistence);
     
     this.init();
@@ -30,10 +30,11 @@ export class ZeroQ {
   private async init() {
     await this.persistence.init();
     this.discoveryClient.connect();
+    // Assuming topicId is configured or we pass a generic one for the default mesh
+    this.peerMesh.connect('ws://localhost:8080', 'default-topic');
   }
 
   async createTopic(topic: string): Promise<void> {
-    // Notify discovery server
     this.discoveryClient.send({ type: 'create_topic', topic });
   }
 
@@ -51,7 +52,7 @@ export class ZeroQ {
   }
 
   async enqueue(queue: string, message: any, options?: { priority?: number; delay?: number }): Promise<void> {
-    await this.broker.publish(queue, message); // Simplified mapping queue to topic internally
+    await this.broker.publish(queue, message);
   }
 
   async consume(queue: string, handler: (msg: Message, ack: () => void, nack: () => void) => void): Promise<Consumer> {
@@ -85,5 +86,6 @@ export class ZeroQ {
 
   disconnect(): void {
     this.discoveryClient.close();
+    this.peerMesh.disconnect();
   }
 }
