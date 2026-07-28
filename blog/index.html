@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ZeroQ Protocol: Rebuilding Apache Kafka as a Zero-Server WebRTC Pub/Sub Mesh</title>
+  <meta name="description" content="In-depth engineering breakdown of gossip-based topic discovery, client-side DLQ, RTCDataChannel backpressure, and message deduplication.">
+  <meta name="keywords" content="ZeroQ, Apache Kafka alternative, WebRTC Pub/Sub, serverless message queue, P2P mesh, AI agents, TypeScript">
+  
+  <!-- OpenGraph / Twitter -->
+  <meta property="og:title" content="ZeroQ Protocol: Rebuilding Apache Kafka as a Zero-Server WebRTC Pub/Sub Mesh">
+  <meta property="og:description" content="How we built a serverless P2P message queue with zero servers using WebRTC and IndexedDB.">
+  <meta property="og:type" content="article">
+  <meta property="og:url" content="https://itsoumya-d.github.io/zeroq/blog/index.html">
+  <meta name="twitter:card" content="summary_large_image">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- JSON-LD -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "TechArticle",
+    "headline": "ZeroQ Protocol: Rebuilding Apache Kafka as a Zero-Server WebRTC Pub/Sub Mesh",
+    "description": "In-depth engineering breakdown of gossip-based topic discovery, client-side DLQ, RTCDataChannel backpressure, and message deduplication.",
+    "author": {
+      "@type": "Person",
+      "name": "Soumya Debnath"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "ZeroQ"
+    },
+    "datePublished": "2026-07-28"
+  }
+  </script>
+  
+  <style>
+    :root {
+      --bg: #0d1117;
+      --text: #c9d1d9;
+      --heading: #f0f6fc;
+      --accent: #58a6ff;
+      --glass-bg: rgba(22, 27, 34, 0.6);
+      --glass-border: rgba(255, 255, 255, 0.1);
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      background-color: var(--bg);
+      color: var(--text);
+      font-family: 'Outfit', sans-serif;
+      line-height: 1.6;
+    }
+    
+    nav {
+      background: var(--glass-bg);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--glass-border);
+      padding: 1rem 2rem;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    nav a {
+      color: var(--heading);
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+    
+    .nav-links a {
+      font-weight: 400;
+      margin-left: 1.5rem;
+      color: var(--accent);
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 4rem auto;
+      padding: 0 2rem;
+    }
+    
+    h1, h2, h3 {
+      color: var(--heading);
+      font-weight: 700;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      line-height: 1.2;
+      margin-bottom: 0.5rem;
+    }
+    
+    .meta {
+      color: #8b949e;
+      font-size: 0.9rem;
+      margin-bottom: 3rem;
+    }
+    
+    .glass-panel {
+      background: var(--glass-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin: 2rem 0;
+      backdrop-filter: blur(5px);
+    }
+    
+    pre {
+      background: #161b22;
+      border: 1px solid var(--glass-border);
+      border-radius: 8px;
+      padding: 1.5rem;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.9rem;
+    }
+    
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--accent);
+      background: rgba(88, 166, 255, 0.1);
+      padding: 0.2em 0.4em;
+      border-radius: 4px;
+    }
+    
+    pre code {
+      color: inherit;
+      background: transparent;
+      padding: 0;
+    }
+    
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 2rem 0;
+    }
+    
+    th, td {
+      border: 1px solid var(--glass-border);
+      padding: 1rem;
+      text-align: left;
+    }
+    
+    th {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--heading);
+    }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="../index.html">ZeroQ</a>
+    <div class="nav-links">
+      <a href="../index.html">← Back to Product</a>
+    </div>
+  </nav>
+
+  <div class="container">
+    <h1>ZeroQ Protocol: Rebuilding Apache Kafka as a Zero-Server WebRTC Pub/Sub Mesh</h1>
+    <div class="meta">Published on July 28, 2026 • 5 min read</div>
+    
+    <div class="glass-panel">
+      <p>In the era of heavy cloud infrastructure, Apache Kafka has been the de facto standard for message queuing and stream processing. However, it often requires extensive configuration, Zookeeper or KRaft nodes, and significant monthly costs. What if we could achieve robust Pub/Sub messaging without any servers at all?</p>
+      <p>Enter <strong>ZeroQ</strong>, a zero-server WebRTC Pub/Sub mesh designed to replace Apache Kafka by running entirely in the client using peer-to-peer data channels and IndexedDB persistence.</p>
+    </div>
+
+    <h2>1. Gossip-Based Topic Discovery</h2>
+    <p>Traditional brokers like Kafka use central coordinators to manage topic discovery and consumer groups. ZeroQ flips this architecture using a gossip protocol over WebRTC.</p>
+    <ul>
+      <li><strong>Formula for Gossip Propagation</strong>: <code>O(log N)</code> time to propagate topic metadata across the mesh.</li>
+      <li><strong>Peer Exchange</strong>: Nodes exchange bloom filters of their subscribed topics to minimize overhead.</li>
+    </ul>
+
+    <h2>2. Client-Side Dead-Letter Queues (DLQ)</h2>
+    <p>In a serverless environment, what happens to failed messages? ZeroQ implements client-side Dead-Letter Queues (DLQ).</p>
+    <p>If a consumer function throws an error or fails to acknowledge (<code>ack()</code>) a message after max retries, the message is routed locally to a separate IndexedDB store (the DLQ topic). Administrators or automated retry agents can then process this DLQ offline.</p>
+
+    <h2>3. Backpressure Controls</h2>
+    <p>Without a central broker to throttle producers, peer-to-peer data channels can quickly become overwhelmed. ZeroQ leverages <code>RTCDataChannel.bufferedAmount</code> to implement backpressure.</p>
+    <p>When <code>bufferedAmount</code> exceeds a configured threshold (e.g., 16 MB), the ZeroQ publisher automatically pauses sending and queues messages in local memory or IndexedDB until the <code>bufferedamountlow</code> event fires.</p>
+
+    <h2>4. Message Deduplication Rings</h2>
+    <p>Because network partitions and peer disconnects are common in P2P meshes, exactly-once delivery requires local deduplication. ZeroQ uses a Ring Buffer of message signatures (hashes) combined with monotonically increasing logical clocks (Lamport timestamps) to discard duplicates seamlessly.</p>
+
+    <h2>Cost Comparison</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Metric</th>
+          <th>Apache Kafka (Cloud)</th>
+          <th>ZeroQ</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Base Server Cost</td>
+          <td>~$400/month</td>
+          <td>$0</td>
+        </tr>
+        <tr>
+          <td>Latency</td>
+          <td>~10-50ms (Network)</td>
+          <td>&lt;1ms (Local/P2P)</td>
+        </tr>
+        <tr>
+          <td>Setup Time</td>
+          <td>Days</td>
+          <td>Minutes</td>
+        </tr>
+        <tr>
+          <td>High Availability</td>
+          <td>Replicas required</td>
+          <td>Built-in via mesh</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="glass-panel">
+      <h2>Copy-Paste TypeScript Integration for AI Agents</h2>
+      <p>AI coding agents can easily drop this into any browser extension, local application, or web app to establish an instant serverless event bus.</p>
+<pre><code>import { ZeroQ } from '@zeroq/core';
+
+// Initialize a persistent, peer-to-peer message queue
+const agentBus = new ZeroQ({
+  name: 'agent_events',
+  sync: 'webrtc',
+  storage: 'indexeddb',
+  maxRetries: 3,
+  deadLetterExchange: 'agent_events_dlq'
+});
+
+// Subscribe to tasks
+agentBus.subscribe(async (msg) => {
+  try {
+    console.log('Processing AI task:', msg.data);
+    await processTask(msg.data);
+    msg.ack();
+  } catch (error) {
+    msg.nack(); // Will move to DLQ after 3 retries
+  }
+});
+
+// Publish a message with built-in backpressure
+await agentBus.publish({
+  task_id: '101',
+  payload: 'Analyze local repository'
+});</code></pre>
+    </div>
+  </div>
+
+</body>
+</html>
