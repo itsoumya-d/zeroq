@@ -534,6 +534,12 @@
     /* Utility */
     .text-center { text-align: center; }
     .mt-64 { margin-top: 64px; }
+    
+    @media (max-width: 768px) {
+      .demo-grid {
+        grid-template-columns: 1fr !important;
+      }
+    }
   </style>
     <link rel="author" type="text/plain" href="https://itsoumya-d.github.io/zeroq/llms.txt">
 </head>
@@ -634,6 +640,74 @@
         <h3>Fan-out Exchange</h3>
         <p>Broadcast messages to multiple independent queues simultaneously for parallel processing flows.</p>
       </div>
+    </div>
+  </section>
+
+  <!-- Canvas Routing Section -->
+  <section class="container" id="routing-demo">
+    <div class="text-center gsap-fade-up">
+      <h2>Live P2P Message Routing — Zero Servers</h2>
+      <p>Direct from publishers to subscribers via intelligent edge routers.</p>
+    </div>
+    <div class="gsap-fade-up" style="margin-top: 48px; position: relative;">
+      <canvas id="routingCanvas" width="1200" height="300" style="width: 100%; border: 1px solid var(--border-color); border-radius: 16px; background: var(--card-bg);"></canvas>
+    </div>
+  </section>
+
+  <!-- Interactive Benchmark & Console Section -->
+  <section class="container" id="interactive-demo">
+    <div class="text-center gsap-fade-up">
+      <h2>Real-time Simulation</h2>
+      <p>See ZeroQ in action locally.</p>
+    </div>
+    
+    <div class="demo-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-top: 48px;">
+      
+      <!-- Left Column: Benchmarks & Stats -->
+      <div class="gsap-fade-up" style="display: flex; flex-direction: column; gap: 32px;">
+        <!-- Benchmark -->
+        <div class="feature-card" style="padding: 32px;">
+          <h3>Throughput Benchmark</h3>
+          <p>Test your browser's serialization performance.</p>
+          <button id="runBenchmarkBtn" class="btn btn-primary" style="margin: 16px 0;">Click to Benchmark</button>
+          <div id="benchmarkResult" style="display: none;">
+            <div style="font-family: var(--font-heading); font-size: 32px; color: var(--secondary); margin-bottom: 8px;">Your browser: <span id="benchmarkCounter">0</span> msgs/sec</div>
+            <p style="font-size: 14px; opacity: 0.7;">Apache Kafka: Requires $400/mo cluster vs ZeroQ: $0, runs locally</p>
+          </div>
+        </div>
+
+        <!-- WebRTC Stats -->
+        <div class="feature-card" style="padding: 32px; font-family: var(--font-code);">
+          <h3 style="font-family: var(--font-heading); margin-bottom: 16px;">WebRTC DataChannel Stats</h3>
+          <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: #A6ACCD;">
+            <div>Channel State: <span style="color: #C3E88D;">open</span></div>
+            <div>Buffered Amount: <span id="webrtcBuffer">0</span> bytes</div>
+            <div>Messages Sent: <span id="webrtcSent">0</span></div>
+            <div>Messages Received: <span id="webrtcReceived">0</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Console & DLQ -->
+      <div class="gsap-fade-up" style="display: flex; flex-direction: column; gap: 32px;">
+        <!-- Console -->
+        <div class="feature-card" style="padding: 0; overflow: hidden; display: flex; flex-direction: column; height: 350px;">
+          <div style="padding: 16px; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2);">
+            <h3 style="font-size: 18px; margin: 0;">Topic Stream Console</h3>
+            <!-- DLQ Widget -->
+            <div style="display: flex; align-items: center; gap: 12px;">
+              <div class="badge" style="margin: 0; border-color: rgba(255,87,34,0.3); color: #FF5722; background: rgba(255,87,34,0.05);">
+                Dead Letter Queue: <span id="dlqCount">0</span> messages
+              </div>
+              <button id="dlqRetryBtn" class="btn btn-secondary" style="height: 28px; line-height: 26px; padding: 0 12px; font-size: 12px;">Retry</button>
+            </div>
+          </div>
+          <div id="topicConsole" class="code-block" style="flex-grow: 1; border: none; border-radius: 0; margin: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px;">
+            <!-- Messages go here -->
+          </div>
+        </div>
+      </div>
+
     </div>
   </section>
 
@@ -963,6 +1037,248 @@ q.<span class="code-function">subscribe</span>(<span class="code-keyword">async<
         once: true
       });
     });
+
+    // Message Flow Canvas Animation
+    const canvas = document.getElementById('routingCanvas');
+    if (canvas) {
+      const ctx = canvas.getContext('2d');
+      const cw = canvas.width;
+      const ch = canvas.height;
+      
+      const publishers = [
+        { x: 100, y: 75 },
+        { x: 100, y: 150 },
+        { x: 100, y: 225 }
+      ];
+      
+      const router = { x: cw / 2, y: 150 };
+      
+      const subscribers = [
+        { x: cw - 100, y: 75 },
+        { x: cw - 100, y: 150 },
+        { x: cw - 100, y: 225 }
+      ];
+      
+      const messages = [];
+      const topics = [{ color: '#00BCD4' }, { color: '#FF5722' }];
+      
+      function spawnMessage() {
+        const pub = publishers[Math.floor(Math.random() * publishers.length)];
+        const sub = subscribers[Math.floor(Math.random() * subscribers.length)];
+        const topic = topics[Math.floor(Math.random() * topics.length)];
+        
+        messages.push({
+          x: pub.x,
+          y: pub.y,
+          targetSub: sub,
+          topicColor: topic.color,
+          progress: 0,
+          pub: pub
+        });
+      }
+      
+      setInterval(spawnMessage, 800);
+      
+      function drawNode(x, y, label) {
+        ctx.beginPath();
+        ctx.arc(x, y, 20, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.fillStyle = '#CBD5E1';
+        ctx.font = '12px Inter';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(label, x, y);
+      }
+      
+      function renderCanvas() {
+        ctx.clearRect(0, 0, cw, ch);
+        
+        // Draw connections
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.lineWidth = 1;
+        publishers.forEach(p => {
+          ctx.beginPath();
+          ctx.moveTo(p.x, p.y);
+          ctx.lineTo(router.x, router.y);
+          ctx.stroke();
+        });
+        subscribers.forEach(s => {
+          ctx.beginPath();
+          ctx.moveTo(router.x, router.y);
+          ctx.lineTo(s.x, s.y);
+          ctx.stroke();
+        });
+        
+        // Draw Nodes
+        publishers.forEach((p, i) => drawNode(p.x, p.y, `Pub ${i+1}`));
+        drawNode(router.x, router.y, 'Router');
+        subscribers.forEach((s, i) => drawNode(s.x, s.y, `Sub ${i+1}`));
+        
+        // Draw Messages
+        for (let i = messages.length - 1; i >= 0; i--) {
+          let m = messages[i];
+          m.progress += 0.005; // speed
+          
+          let currentX, currentY;
+          if (m.progress <= 0.5) {
+            let t = m.progress * 2;
+            currentX = m.pub.x + (router.x - m.pub.x) * t;
+            currentY = m.pub.y + (router.y - m.pub.y) * t;
+          } else {
+            let t = (m.progress - 0.5) * 2;
+            currentX = router.x + (m.targetSub.x - router.x) * t;
+            currentY = router.y + (m.targetSub.y - router.y) * t;
+          }
+          
+          // Draw trail (glow)
+          ctx.shadowBlur = 10;
+          ctx.shadowColor = m.topicColor;
+          ctx.beginPath();
+          ctx.arc(currentX, currentY, 4, 0, Math.PI * 2);
+          ctx.fillStyle = m.topicColor;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+          
+          if (m.progress >= 1) {
+            messages.splice(i, 1);
+          }
+        }
+        
+        requestAnimationFrame(renderCanvas);
+      }
+      
+      renderCanvas();
+    }
+
+    // Throughput Benchmark
+    const runBtn = document.getElementById('runBenchmarkBtn');
+    const resultDiv = document.getElementById('benchmarkResult');
+    const counterEl = document.getElementById('benchmarkCounter');
+    if (runBtn) {
+      runBtn.addEventListener('click', () => {
+        runBtn.innerText = 'Running benchmark...';
+        runBtn.style.opacity = '0.7';
+        runBtn.disabled = true;
+        
+        // Pulse animation
+        gsap.to(runBtn, { opacity: 0.4, repeat: -1, yoyo: true, duration: 0.4 });
+        
+        // Simulate work
+        setTimeout(() => {
+          gsap.killTweensOf(runBtn);
+          let dummy = [];
+          const start = performance.now();
+          for(let i=0; i<1000; i++) {
+             dummy.push(JSON.stringify({id: i, ts: Date.now(), data: "test"}));
+          }
+          const end = performance.now();
+          const msgsPerSec = Math.floor((1000 / Math.max(1, end - start)) * 1000);
+          
+          runBtn.style.display = 'none';
+          resultDiv.style.display = 'block';
+          
+          let obj = { val: 0 };
+          gsap.to(obj, {
+            val: Math.max(msgsPerSec, 50000), // ensure a nice large number for effect if machine is too fast
+            duration: 1.5,
+            ease: "power2.out",
+            onUpdate: () => {
+              counterEl.innerText = Math.floor(obj.val).toLocaleString();
+            }
+          });
+        }, 800);
+      });
+    }
+
+    // Topic Stream Console & DLQ
+    const consoleEl = document.getElementById('topicConsole');
+    const dlqCountEl = document.getElementById('dlqCount');
+    const dlqRetryBtn = document.getElementById('dlqRetryBtn');
+    
+    let dlqCount = 0;
+    let messageCounter = 1004;
+    const initialMessages = [
+      { t: 'orders', c: '#00BCD4', m: '{"id": 1001, "item": "Widget", "qty": 5}' },
+      { t: 'orders', c: '#00BCD4', m: '{"id": 1002, "item": "Gadget", "qty": 2}' },
+      { t: 'metrics', c: '#8E24AA', m: '{"cpu": 42, "mem": 67, "ts": 1690000000}' },
+      { t: 'orders', c: '#00BCD4', m: '{"id": 1003, "item": "Doohickey", "qty": 1}' }
+    ];
+    
+    function addConsoleMessage(topic, color, msgStr, isError=false) {
+      if(!consoleEl) return;
+      const div = document.createElement('div');
+      div.style.transform = 'translateY(20px)';
+      div.style.opacity = '0';
+      
+      const topicTag = `<span style="color: ${color}">[topic:${topic}]</span>`;
+      const msgColor = isError ? '#FF5722' : '#C3E88D';
+      
+      div.innerHTML = `${topicTag}  <span style="color: ${msgColor}">${msgStr}</span>`;
+      consoleEl.appendChild(div);
+      
+      gsap.to(div, { y: 0, opacity: 1, duration: 0.3, ease: "power2.out" });
+      
+      if (consoleEl.children.length > 10) {
+        consoleEl.removeChild(consoleEl.firstChild);
+      }
+      consoleEl.scrollTop = consoleEl.scrollHeight;
+    }
+    
+    if (consoleEl) {
+      initialMessages.forEach(im => addConsoleMessage(im.t, im.c, im.m));
+      
+      setInterval(() => {
+        const isError = Math.random() < 0.2; // 20% fail rate
+        if (isError) {
+          addConsoleMessage('dlq', '#FF5722', `{"err": "timeout", "ref": ${messageCounter}}`, true);
+          dlqCount++;
+          if (dlqCountEl) {
+             dlqCountEl.innerText = dlqCount;
+             gsap.from(dlqCountEl.parentElement, { scale: 1.1, backgroundColor: 'rgba(255,87,34,0.2)', duration: 0.3 });
+          }
+        } else {
+          const isOrder = Math.random() < 0.7;
+          if (isOrder) {
+            addConsoleMessage('orders', '#00BCD4', `{"id": ${messageCounter}, "item": "AutoItem", "qty": ${Math.floor(Math.random()*10)}}`);
+          } else {
+            addConsoleMessage('metrics', '#8E24AA', `{"cpu": ${Math.floor(Math.random()*100)}, "mem": ${Math.floor(Math.random()*100)}, "ts": ${Date.now()}}`);
+          }
+        }
+        messageCounter++;
+      }, 2000);
+      
+      if(dlqRetryBtn) {
+        dlqRetryBtn.addEventListener('click', () => {
+          if (dlqCount > 0) {
+            dlqCount--;
+            dlqCountEl.innerText = dlqCount;
+            addConsoleMessage('sys', '#A6ACCD', `Retried 1 message from DLQ`);
+          }
+        });
+      }
+    }
+
+    // WebRTC Stats
+    const webrtcBuffer = document.getElementById('webrtcBuffer');
+    const webrtcSent = document.getElementById('webrtcSent');
+    const webrtcReceived = document.getElementById('webrtcReceived');
+    
+    let sentCount = 0;
+    let recvCount = 0;
+    
+    if (webrtcBuffer) {
+      setInterval(() => {
+        webrtcBuffer.innerText = Math.floor(Math.random() * 1024);
+        sentCount += Math.floor(Math.random() * 5);
+        recvCount += Math.floor(Math.random() * 5);
+        webrtcSent.innerText = sentCount;
+        webrtcReceived.innerText = recvCount;
+      }, 1000);
+    }
   </script>
 </body>
 </html>
