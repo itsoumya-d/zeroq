@@ -5,9 +5,24 @@
   "main": "dist/index.js",
   "module": "dist/index.mjs",
   "types": "dist/index.d.ts",
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/itsoumya-d/zeroq.git"
+  },
+  "homepage": "https://itsoumya-d.github.io/zeroq/",
+  "bugs": {
+    "url": "https://github.com/itsoumya-d/zeroq/issues"
+  },
   "scripts": {
     "build": "tsup",
-    "dev": "tsup --watch"
+    "dev": "tsup --watch",
+    "test": "node --test tests/*.test.mjs",
+    "prepublishOnly": "npm run build"
   },
   "devDependencies": {
     "tsup": "^8.0.2",
