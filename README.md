@@ -1,7 +1,7 @@
 <!--
 // Copyright (c) 2024-2026 Soumya Debnath. All Rights Reserved.
-// Licensed under the Business Source License 1.1 (BSL 1.1).
-// See LICENSE file for details. Production use requires a paid license.
+// Dual-licensed: AGPL-3.0-or-later (free, see LICENSE) OR a commercial licence
+// (see COMMERCIAL_LICENSE.md) if you cannot meet the AGPL's source-disclosure terms.
 // Contact: soumyadebnath1661@gmail.com
 -->
 
@@ -9,7 +9,7 @@
   <h1>ZeroQ</h1>
   <p><b>ZeroQ moves pub/sub and work-queue messaging directly between browser peers, so small-scale event fan-out does not require operating a broker.</b></p>
 
-  [![License: BSL 1.1](https://img.shields.io/badge/License-BSL_1.1-red.svg)](https://mariadb.com/bsl11/)
+  [![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](https://www.gnu.org/licenses/agpl-3.0)
   [![Status: Pre-Release](https://img.shields.io/badge/status-pre--release-orange.svg)]()
   [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)]()
   [![WebRTC](https://img.shields.io/badge/WebRTC-333333?style=flat&logo=webrtc&logoColor=white)]()
@@ -165,55 +165,19 @@ await worker.consume('alerts', (msg, ack) => {
 
 ### `class ZeroQ`
 
-#### `constructor(options?: { discoveryUrl?: string; topicId?: string; licenseKey?: string; allowEval?: boolean })`
-Initialises the ZeroQ client. Note: earlier documentation showed a positional string argument — the actual API takes an options object.
-`topicId` (default `'default-topic'`) selects the signaling room; peers must share it to discover each other.
-Connection setup is asynchronous and is not awaited by the constructor, so sockets open shortly after it returns.
+## 📄 License
 
-#### `async createTopic(topic: string): Promise<void>`
-Registers a pub/sub topic with the discovery server.
+**Dual-licensed — choose either:**
 
-#### `async publish(topic: string, message: any): Promise<void>`
-Publishes a payload to a topic. Resolves once the frame has been handed to each connected peer's
-DataChannel — **not** once anyone has received it. Resolves successfully with zero peers. Rejects only
-if the payload is not JSON-serialisable.
+1. **[AGPL-3.0-or-later](LICENSE)** — free for any purpose, including commercial and production
+   use. No payment, no permission, no key required. The obligation it carries: if you modify this
+   software and let users interact with it over a network, you must offer those users your modified
+   source under the same licence.
 
-#### `async subscribe(topic: string, handler: (msg: Message) => void): Promise<Subscription>`
-Subscribes to a topic. Returns a `Subscription` with `.unsubscribe()`.
+2. **[Commercial licence](COMMERCIAL_LICENSE.md)** — for organisations that cannot or prefer not to
+   meet the AGPL's source-disclosure obligation. This buys an exception, not access.
 
-#### `async createQueue(queue: string): Promise<void>`
-Registers a distributed work queue.
-
-#### `async enqueue(queue: string, message: any, options?: { priority?: number; delay?: number }): Promise<void>`
-Adds a message to a work queue. `priority` is carried on the envelope as `msg.priority` but does not
-reorder delivery. `delay` is accepted and ignored. Otherwise identical to `publish()`.
-
-#### `async consume(queue: string, handler: (msg: Message, ack: () => void, nack: () => void) => void): Promise<Consumer>`
-Consumes from a queue. Returns a `Consumer` with `.unsubscribe()`. Call `ack()` on success or `nack()` to retry (max 3 attempts, after which the message remains in local storage as a dead letter).
-Consumers on the same peer are served round-robin; consumers on *different* peers each receive every message. See [Message Delivery Guarantees](#message-delivery-guarantees).
-
-#### `async request(topic: string, message: any, timeoutMs?: number): Promise<any>`
-RPC pattern. Rejects with `Timeout` if no reply arrives within `timeoutMs`.
-
-#### `async reply(topic: string, handler: (msg: Message) => any): Promise<void>`
-Listens for RPC requests and publishes the returned value back.
-
-#### `disconnect(): void`
-Closes both WebSockets and all peer connections, and cancels every pending reconnect timer and ping
-interval. Idempotent. After `disconnect()` the instance is terminal — reconnection is not attempted and
-the instance cannot be reused.
-
-### Mesh events
-
-The internal `PeerMesh` extends a minimal `EventEmitter`. It is not exported, but the events it emits
-are: `peer_connected(peerId)`, `peer_disconnected(peerId)`,
-`peer_connection_failed(peerId, iceConnectionState)`, `peer_unreachable(peerId, reason)`,
-`connection_failed(reason)` (WebSocket reconnects exhausted), `message_dropped(peerId, reason, detail)`
-and `message_received(rawFrame)`.
-
-**Not exported (internal only):** `PersistenceLayer`, `PeerMesh`, `MessageBroker`, `DiscoveryClient`. The subpath `zeroq/persistence` does not exist.
-
----
+Contributions are accepted under AGPL-3.0-or-later.
 
 ## Message Delivery Guarantees
 
@@ -375,7 +339,7 @@ go build -o zeroq-discovery
 | Feature | ZeroQ | Kafka | AWS SQS | Redis Pub/Sub | NATS |
 |---------|-------|-------|---------|---------------|------|
 | **Infra cost** | $0 for routing (a signaling server is still required) | High | Pay-per-req | Medium | Low |
-| **Licence cost** | $299–$9,999/yr for any production use (BSL 1.1) | Apache-2.0 | usage-based | BSD | Apache-2.0 |
+| **Licence cost** | $0 (AGPL-3.0-or-later); commercial exception from $299/yr | Apache-2.0 | usage-based | BSD | Apache-2.0 |
 | **Topology** | P2P broadcast, single hop | Centralized | Cloud | Centralized | Centralized |
 | **Delivery** | **at-most-once, best-effort** | at-least-once / exactly-once | at-least-once | at-most-once | at-most-once / at-least-once (JetStream) |
 | **Persistence** | IndexedDB, browser only, no retention | Disk log | AWS-managed | In-memory | Disk/Mem |
@@ -407,9 +371,11 @@ A: No. The server only routes WebRTC handshakes (SDP/ICE candidates).
 
 ---
 
-## License — Business Source License 1.1
+## ⚖️ Commercial licence (optional)
 
-> **Source-available, NOT open-source. All production use requires a paid license.**
+> **This software is free under [AGPL-3.0-or-later](LICENSE) — including for commercial and
+> production use.** The prices below buy one specific thing: an exception to the AGPL's requirement
+> that you publish your modifications if you run a modified version as a network service.
 
 | Tier | Price | For |
 |:-----|:------|:----|
@@ -419,6 +385,6 @@ A: No. The server only routes WebRTC handshakes (SDP/ICE candidates).
 | **OEM / White-Label** | $19,999/year | Embed in your product |
 | **Full IP Buyout** | $750,000 | Complete ownership transfer |
 
-**Free use limited to:** Personal evaluation, academic research, contributing via PRs.
+**Free under AGPL-3.0-or-later:** any use, including production and commercial, provided you meet the AGPL's terms.
 
 © 2024-2026 Soumya Debnath. All Rights Reserved.

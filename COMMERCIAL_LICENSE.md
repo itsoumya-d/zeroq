@@ -1,5 +1,18 @@
 # Commercial License — ZeroQ
 
+> ### ⚠️ You probably do not need this licence
+>
+> As of the relicensing, this software is available under **AGPL-3.0-or-later** free of charge for
+> any purpose, including commercial and production use. You do **not** need to pay, ask permission,
+> or obtain a key.
+>
+> A commercial licence buys exactly one thing: **an exception to the AGPL's requirement that you
+> publish your modifications** if you run a modified version as a network service. If you are happy
+> to comply with the AGPL — or you are not modifying the source — the free option is the right one.
+
+---
+
+
 > Replaces: Apache Kafka (Confluent Cloud $1-$3/GB), AWS SQS ($0.40/1M requests), RabbitMQ (infra costs).
 > ZeroQ routes messages peer-to-peer via WebRTC DataChannels with IndexedDB persistence.
 
