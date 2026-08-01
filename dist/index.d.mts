@@ -16,13 +16,25 @@ interface Consumer {
     queue: string;
     unsubscribe: () => void;
 }
+interface ZeroQOptions {
+    /** WebSocket URL of the Go discovery/signaling server. Default 'ws://localhost:8080'. */
+    discoveryUrl?: string;
+    /** Signaling room joined by this instance. Peers must share it to see each other. Default 'default-topic'. */
+    topicId?: string;
+    /** Commercial licence key (see LICENSE / COMMERCIAL_LICENSE.md). */
+    licenseKey?: string;
+    /** Suppress the commercial-use notice during evaluation. */
+    allowEval?: boolean;
+}
 
 declare class ZeroQ {
     private discoveryClient;
     private peerMesh;
     private persistence;
     private broker;
-    constructor(options?: any);
+    private discoveryUrl;
+    private topicId;
+    constructor(options?: ZeroQOptions);
     private init;
     createTopic(topic: string): Promise<void>;
     publish(topic: string, message: any): Promise<void>;
@@ -38,4 +50,4 @@ declare class ZeroQ {
     disconnect(): void;
 }
 
-export { type Consumer, type Message, type Subscription, ZeroQ };
+export { type Consumer, type Message, type Subscription, ZeroQ, type ZeroQOptions };

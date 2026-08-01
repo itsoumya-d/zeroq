@@ -1,3 +1,6 @@
 node_modules/
 dist/*.map
 .env
+
+# Compiled Go discovery server binary — build from source with `cd discovery && go build`
+discovery/zeroq-discovery

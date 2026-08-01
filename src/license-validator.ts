@@ -29,10 +29,11 @@ export class LicenseValidator {
 Product: ZEROQ | Copyright (c) 2024-2026 Soumya Debnath
 
 Production use of this software requires a valid paid commercial license key.
-Unlicensed commercial deployment constitutes copyright infringement under DMCA § 1201.
+See LICENSE and COMMERCIAL_LICENSE.md for the applicable terms.
 
 Purchase a commercial license key:
-📧 Email: soumyadebnath1661@gmail.com | 📞 Phone: +91 7031648617
+📧 soumyadebnath1661@gmail.com
+   https://github.com/itsoumya-d/zeroq/blob/main/COMMERCIAL_LICENSE.md
 ================================================================================
       `);
       return false;

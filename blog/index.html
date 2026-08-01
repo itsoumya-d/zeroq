@@ -3,13 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZeroQ Protocol: Rebuilding Apache Kafka as a Zero-Server WebRTC Pub/Sub Mesh</title>
-  <meta name="description" content="In-depth engineering breakdown of gossip-based topic discovery, client-side DLQ, RTCDataChannel backpressure, and message deduplication.">
-  <meta name="keywords" content="ZeroQ, Apache Kafka alternative, WebRTC Pub/Sub, serverless message queue, P2P mesh, AI agents, TypeScript">
+  <title>ZeroQ Protocol: Pub/Sub and Work Queues over a WebRTC DataChannel Mesh</title>
+  <meta name="description" content="What ZeroQ actually implements: gossip peer discovery, client-side dead letters, RTCDataChannel backpressure and duplicate suppression — including the guarantees it does not provide.">
+  <meta name="keywords" content="ZeroQ, WebRTC Pub/Sub, WebRTC DataChannel messaging, browser message queue, P2P mesh, at-most-once delivery, TypeScript">
+  <link rel="canonical" href="https://itsoumya-d.github.io/zeroq/blog/index.html">
   
   <!-- OpenGraph / Twitter -->
-  <meta property="og:title" content="ZeroQ Protocol: Rebuilding Apache Kafka as a Zero-Server WebRTC Pub/Sub Mesh">
-  <meta property="og:description" content="How we built a serverless P2P message queue with zero servers using WebRTC and IndexedDB.">
+  <meta property="og:title" content="ZeroQ Protocol: Pub/Sub and Work Queues over a WebRTC DataChannel Mesh">
+  <meta property="og:description" content="A precise walkthrough of ZeroQ's WebRTC DataChannel mesh: what it implements, and the delivery guarantees it does not provide.">
   <meta property="og:type" content="article">
   <meta property="og:url" content="https://itsoumya-d.github.io/zeroq/blog/index.html">
   <meta name="twitter:card" content="summary_large_image">
@@ -24,8 +25,8 @@
   {
     "@context": "https://schema.org",
     "@type": "TechArticle",
-    "headline": "ZeroQ Protocol: Rebuilding Apache Kafka as a Zero-Server WebRTC Pub/Sub Mesh",
-    "description": "In-depth engineering breakdown of gossip-based topic discovery, client-side DLQ, RTCDataChannel backpressure, and message deduplication.",
+    "headline": "ZeroQ Protocol: Pub/Sub and Work Queues over a WebRTC DataChannel Mesh",
+    "description": "What ZeroQ actually implements: gossip peer discovery, client-side dead letters, RTCDataChannel backpressure and duplicate suppression — including the guarantees it does not provide.",
     "author": {
       "@type": "Person",
       "name": "Soumya Debnath"
@@ -34,7 +35,8 @@
       "@type": "Organization",
       "name": "ZeroQ"
     },
-    "datePublished": "2026-07-28"
+    "datePublished": "2026-07-28",
+    "dateModified": "2026-08-01"
   }
   </script>
   
@@ -168,95 +170,85 @@
   </nav>
 
   <div class="container">
-    <h1>ZeroQ Protocol: Rebuilding Apache Kafka as a Zero-Server WebRTC Pub/Sub Mesh</h1>
-    <div class="meta">Published on July 28, 2026 • 5 min read</div>
-    
+    <h1>ZeroQ Protocol: Pub/Sub and Work Queues over a WebRTC DataChannel Mesh</h1>
+    <div class="meta">Published on July 28, 2026 &bull; corrected August 1, 2026 &bull; 6 min read</div>
+
     <div class="glass-panel">
-      <p>In the era of heavy cloud infrastructure, Apache Kafka has been the de facto standard for message queuing and stream processing. However, it often requires extensive configuration, Zookeeper or KRaft nodes, and significant monthly costs. What if we could achieve robust Pub/Sub messaging without any servers at all?</p>
-      <p>Enter <strong>ZeroQ</strong>, a zero-server WebRTC Pub/Sub mesh designed to replace Apache Kafka by running entirely in the client using peer-to-peer data channels and IndexedDB persistence.</p>
+      <p>Apache Kafka is the de facto standard for message queuing and stream processing, but it requires extensive configuration, KRaft (or formerly Zookeeper) nodes, and real monthly spend. For a narrow class of problems &mdash; fan-out between a handful of browser clients where losing a message is acceptable &mdash; you do not need any of that.</p>
+      <p><strong>ZeroQ</strong> is a pre-release, browser-first pub/sub and work-queue library that moves messages directly between peers over WebRTC DataChannels, with an IndexedDB store for local durability. It is <strong>not</strong> a Kafka replacement: there is no log replay, no consumer offsets, no partitions, no replication, and delivery is at-most-once. What follows describes what the code in this repository actually does.</p>
     </div>
 
-    <h2>1. Gossip-Based Topic Discovery</h2>
-    <p>Traditional brokers like Kafka use central coordinators to manage topic discovery and consumer groups. ZeroQ flips this architecture using a gossip protocol over WebRTC.</p>
+    <h2>1. Gossip-Based Peer Discovery</h2>
+    <p>A signaling server introduces peers; after that, peers introduce each other. When a DataChannel opens, each side sends a <code>__gossip__</code> frame containing up to 10 known peer ids, and the receiver dials any it has not seen. That is the whole protocol.</p>
     <ul>
-      <li><strong>Formula for Gossip Propagation</strong>: <code>O(log N)</code> time to propagate topic metadata across the mesh.</li>
-      <li><strong>Peer Exchange</strong>: Nodes exchange bloom filters of their subscribed topics to minimize overhead.</li>
+      <li><strong>What is gossiped</strong>: peer ids only.</li>
+      <li><strong>What is not gossiped</strong>: topic metadata, subscription sets or consumer-group membership. There are no bloom filters and no topic-level routing &mdash; every message is broadcast to every connected peer, which filters locally by topic.</li>
+      <li><strong>Topology</strong>: each peer dials every peer it learns about, so the mesh converges to a full mesh with O(N&sup2;) connections. There is no multi-hop forwarding, so a peer only receives messages from peers it is <em>directly</em> connected to.</li>
     </ul>
 
-    <h2>2. Client-Side Dead-Letter Queues (DLQ)</h2>
-    <p>In a serverless environment, what happens to failed messages? ZeroQ implements client-side Dead-Letter Queues (DLQ).</p>
-    <p>If a consumer function throws an error or fails to acknowledge (<code>ack()</code>) a message after max retries, the message is routed locally to a separate IndexedDB store (the DLQ topic). Administrators or automated retry agents can then process this DLQ offline.</p>
+    <h2>2. Client-Side Dead Letters</h2>
+    <p>If a consumer calls <code>nack()</code>, <code>retryCount</code> is incremented and the message is re-broadcast, for up to three attempts. After that it is left in the local IndexedDB store, and <code>PersistenceLayer.getDeadLetterQueue()</code> returns the messages with <code>retryCount &gt;= 3</code>.</p>
+    <p>Two caveats an earlier version of this post got wrong: dead letters live in the <em>same</em> object store (<code>messages</code>) as everything else &mdash; the &ldquo;DLQ&rdquo; is a filter over that store, not a separate store or topic; and <code>PersistenceLayer</code> is internal with no accessor on <code>ZeroQ</code>, so dead letters are currently only reachable by opening the <code>zeroq-db</code> database directly.</p>
+    <p>Note also that a consumer which simply dies without calling <code>ack()</code> or <code>nack()</code> triggers no retry at all: there is no visibility timeout and no redelivery timer.</p>
 
-    <h2>3. Backpressure Controls</h2>
-    <p>Without a central broker to throttle producers, peer-to-peer data channels can quickly become overwhelmed. ZeroQ leverages <code>RTCDataChannel.bufferedAmount</code> to implement backpressure.</p>
-    <p>When <code>bufferedAmount</code> exceeds a configured threshold (e.g., 16 MB), the ZeroQ publisher automatically pauses sending and queues messages in local memory or IndexedDB until the <code>bufferedamountlow</code> event fires.</p>
+    <h2>3. Backpressure Handling</h2>
+    <p>With no central broker to throttle producers, a DataChannel can be overwhelmed. ZeroQ checks <code>dc.bufferedAmount</code> before every send, against a <strong>hardcoded 65,536-byte (64 KiB) threshold</strong>.</p>
+    <p>Be precise about what happens above that threshold: the message is <strong>discarded</strong>. ZeroQ does not pause the producer, does not buffer to memory or IndexedDB, and does not wait for <code>bufferedamountlow</code> &mdash; that event is not used anywhere in the codebase. <code>publish()</code> still resolves successfully. The only signal is a <code>message_dropped</code> event on the mesh, which callers must subscribe to if they care. The same applies to a payload larger than the DataChannel's <code>sctp.maxMessageSize</code> (64 KiB minimum per spec, 256 KiB in Chrome), because there is no chunking.</p>
 
-    <h2>4. Message Deduplication Rings</h2>
-    <p>Because network partitions and peer disconnects are common in P2P meshes, exactly-once delivery requires local deduplication. ZeroQ uses a Ring Buffer of message signatures (hashes) combined with monotonically increasing logical clocks (Lamport timestamps) to discard duplicates seamlessly.</p>
+    <h2>4. Duplicate Suppression</h2>
+    <p>Because a full mesh delivers the same broadcast along multiple edges, receivers need to suppress duplicates. ZeroQ keeps a <code>Set</code> of the last 10,000 <code>id:retryCount</code> strings, evicted first-in-first-out, and drops any frame whose key it has already seen.</p>
+    <p>This is duplicate <em>suppression</em>, not exactly-once delivery. The key is the sender-supplied UUID rather than a content hash, so a malicious peer can suppress a message by claiming its id first. Eviction is FIFO, not LRU, over a fixed 10,000-entry window, so beyond that a genuine duplicate can be redelivered. And there are no Lamport timestamps or logical clocks: <code>Message.seq</code> exists in the type but is always <code>0</code> and is never read. Ordering comes solely from the ordered delivery guarantee of a single DataChannel.</p>
 
-    <h2>Cost Comparison</h2>
+    <h2>Where ZeroQ Fits</h2>
     <table>
       <thead>
-        <tr>
-          <th>Metric</th>
-          <th>Apache Kafka (Cloud)</th>
-          <th>ZeroQ</th>
-        </tr>
+        <tr><th>Metric</th><th>Apache Kafka (managed)</th><th>ZeroQ</th></tr>
       </thead>
       <tbody>
-        <tr>
-          <td>Base Server Cost</td>
-          <td>~$400/month</td>
-          <td>$0</td>
-        </tr>
-        <tr>
-          <td>Latency</td>
-          <td>~10-50ms (Network)</td>
-          <td>&lt;1ms (Local/P2P)</td>
-        </tr>
-        <tr>
-          <td>Setup Time</td>
-          <td>Days</td>
-          <td>Minutes</td>
-        </tr>
-        <tr>
-          <td>High Availability</td>
-          <td>Replicas required</td>
-          <td>Built-in via mesh</td>
-        </tr>
+        <tr><td>Broker infrastructure</td><td>Cluster required</td><td>None &mdash; but a signaling server is still required</td></tr>
+        <tr><td>Licence</td><td>Apache-2.0</td><td>BSL 1.1; $299&ndash;$9,999/yr for any production use</td></tr>
+        <tr><td>Delivery guarantee</td><td>at-least-once / exactly-once</td><td><strong>at-most-once, best effort</strong></td></tr>
+        <tr><td>Replay / consumer offsets</td><td>Yes</td><td>No</td></tr>
+        <tr><td>Ordering</td><td>Per partition</td><td>Per DataChannel only</td></tr>
+        <tr><td>Latency</td><td>Network RTT to the broker and back</td><td>One network RTT peer-to-peer</td></tr>
+        <tr><td>Throughput</td><td>Very high</td><td>~480 msg/s with IndexedDB persistence; ~61,000 msg/s without, measured single-machine over an in-process loopback channel (an upper bound)</td></tr>
       </tbody>
     </table>
+    <p>Cost figures for managed Kafka vary by an order of magnitude with retention, throughput and vendor; this post no longer quotes a single monthly number, because the earlier &ldquo;$400/month&rdquo; figure was not sourced. Compare your own bill.</p>
 
     <div class="glass-panel">
-      <h2>Copy-Paste TypeScript Integration for AI Agents</h2>
-      <p>AI coding agents can easily drop this into any browser extension, local application, or web app to establish an instant serverless event bus.</p>
-<pre><code>import { ZeroQ } from '@zeroq/core';
+      <h2>Integration</h2>
+      <p>There is no <code>@zeroq/core</code> package &mdash; that name does not exist on npm, and the name <code>zeroq</code> on npm belongs to an unrelated project by a different author. Load the built module from the CDN or build it from source. Producer and consumer must be <strong>different peers</strong>: a peer does not receive its own publishes.</p>
+<pre><code>import { ZeroQ } from 'https://cdn.jsdelivr.net/gh/itsoumya-d/zeroq@main/dist/index.mjs';
 
-// Initialize a persistent, peer-to-peer message queue
-const agentBus = new ZeroQ({
-  name: 'agent_events',
-  sync: 'webrtc',
-  storage: 'indexeddb',
-  maxRetries: 3,
-  deadLetterExchange: 'agent_events_dlq'
-});
+// ---- Peer A: the worker ----
+const worker = new ZeroQ({ discoveryUrl: 'wss://your-signaling-server/ws' });
 
-// Subscribe to tasks
-agentBus.subscribe(async (msg) => {
+await worker.consume('agent_events', (msg, ack, nack) =&gt; {
   try {
-    console.log('Processing AI task:', msg.data);
-    await processTask(msg.data);
-    msg.ack();
-  } catch (error) {
-    msg.nack(); // Will move to DLQ after 3 retries
+    console.log('Processing AI task:', msg.payload);
+    processTask(msg.payload);
+    ack();
+  } catch (err) {
+    nack();   // up to 3 attempts, then left as a dead letter
   }
 });
 
-// Publish a message with built-in backpressure
-await agentBus.publish({
+// ---- Peer B: the producer, in a separate tab or process ----
+const producer = new ZeroQ({ discoveryUrl: 'wss://your-signaling-server/ws' });
+
+await producer.createQueue('agent_events');
+await producer.enqueue('agent_events', {
   task_id: '101',
   payload: 'Analyze local repository'
 });</code></pre>
+      <p>The constructor takes <code>{ discoveryUrl, topicId }</code>; there are no <code>name</code>, <code>sync</code>, <code>storage</code>, <code>maxRetries</code> or <code>deadLetterExchange</code> options. <code>subscribe</code>/<code>consume</code> take <code>(topicOrQueue, handler)</code> and <code>publish</code>/<code>enqueue</code> take <code>(topicOrQueue, payload)</code> &mdash; the topic is never optional. <code>ack</code>/<code>nack</code> are the second and third <em>arguments</em> to a <code>consume</code> handler; there is no <code>msg.ack()</code>.</p>
+      <p>Finally: the discovery server bundled in <code>discovery/</code> does not currently relay <code>peer_joined</code>, <code>offer</code>, <code>answer</code> or <code>ice_candidate</code> between clients, so no peer connection is established against it. You need a signaling server that implements the protocol documented in the README.</p>
+    </div>
+
+    <div class="glass-panel">
+      <h2>Changelog</h2>
+      <p><strong>2026-08-01.</strong> Corrected claims that were not supported by the code in this repository: bloom-filter topic exchange and <code>O(log N)</code> topic-metadata propagation (neither exists), a separate IndexedDB store for dead letters (there is one store), a configurable 16 MB backpressure threshold with producer pausing and <code>bufferedamountlow</code> (the threshold is a hardcoded 64 KiB and the message is dropped), exactly-once delivery via a hash ring buffer and Lamport timestamps (duplicate suppression uses sender-supplied UUIDs; <code>seq</code> is always 0), &ldquo;High Availability: built-in via mesh&rdquo; (there is no replication or quorum), the <code>&lt;1ms</code> latency and <code>~$400/month</code> figures (neither was sourced or reproducible), and an integration snippet importing a non-existent <code>@zeroq/core</code> package with an API that does not match the library.</p>
     </div>
   </div>
 
