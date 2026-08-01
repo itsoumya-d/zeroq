@@ -41,10 +41,11 @@ var LicenseValidator = class {
 Product: ZEROQ | Copyright (c) 2024-2026 Soumya Debnath
 
 Production use of this software requires a valid paid commercial license key.
-Unlicensed commercial deployment constitutes copyright infringement under DMCA \xA7 1201.
+See LICENSE and COMMERCIAL_LICENSE.md for the applicable terms.
 
 Purchase a commercial license key:
-\u{1F4E7} Email: soumyadebnath1661@gmail.com | \u{1F4DE} Phone: +91 7031648617
+\u{1F4E7} soumyadebnath1661@gmail.com
+   https://github.com/itsoumya-d/zeroq/blob/main/COMMERCIAL_LICENSE.md
 ================================================================================
       `);
       return false;
@@ -74,45 +75,87 @@ var EventEmitter = class {
 var DiscoveryClient = class extends EventEmitter {
   ws = null;
   url;
+  closed = false;
   constructor(url) {
     super();
     this.url = url;
   }
   connect() {
+    if (this.closed) return;
     if (typeof WebSocket === "undefined") return;
     this.ws = new WebSocket(this.url);
-    this.ws.onopen = () => this.emit("connected");
+    this.ws.onopen = () => {
+      if (this.closed) {
+        try {
+          this.ws?.close();
+        } catch {
+        }
+        return;
+      }
+      this.emit("connected");
+    };
     this.ws.onmessage = (e) => {
-      const msg = JSON.parse(e.data);
-      this.emit("message", msg);
+      try {
+        const msg = JSON.parse(e.data);
+        this.emit("message", msg);
+      } catch (err) {
+        console.warn("ZeroQ: discovery message parse error", err);
+      }
     };
     this.ws.onclose = () => this.emit("disconnected");
   }
   send(msg) {
+    if (this.closed) return;
+    if (typeof WebSocket === "undefined") return;
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(msg));
     }
   }
   close() {
-    this.ws?.close();
+    this.closed = true;
+    try {
+      this.ws?.close();
+    } catch {
+    }
+    this.ws = null;
   }
 };
 
 // src/peer-mesh.ts
-var PeerMesh = class extends EventEmitter {
+var MAX_WS_RECONNECT_ATTEMPTS = 10;
+var MAX_PEER_RECONNECT_ATTEMPTS = 10;
+var MAX_BACKOFF_MS = 3e4;
+var BUFFERED_AMOUNT_LIMIT = 65536;
+var PeerMesh = class _PeerMesh extends EventEmitter {
   peers = /* @__PURE__ */ new Map();
   ws = null;
   knownPeers = /* @__PURE__ */ new Set();
   reconnectTimeouts = /* @__PURE__ */ new Map();
+  peerAttempts = /* @__PURE__ */ new Map();
   lastSeen = /* @__PURE__ */ new Map();
   pingIntervals = /* @__PURE__ */ new Map();
+  pendingTimers = /* @__PURE__ */ new Set();
   discoveryUrl = "";
   topicId = "";
   wsReconnectAttempts = 0;
+  closed = false;
   constructor() {
     super();
   }
+  /** setTimeout that is tracked, so disconnect() can cancel it. */
+  later(fn, ms) {
+    const t = setTimeout(() => {
+      this.pendingTimers.delete(t);
+      if (this.closed) return;
+      fn();
+    }, ms);
+    this.pendingTimers.add(t);
+  }
+  static jitter(delay) {
+    return Math.round(delay * (0.8 + Math.random() * 0.4));
+  }
   connect(discoveryUrl, topicId) {
+    if (this.closed) return;
     this.discoveryUrl = discoveryUrl;
     this.topicId = topicId;
     if (typeof WebSocket === "undefined") return;
@@ -144,17 +187,19 @@ var PeerMesh = class extends EventEmitter {
       }
     };
     this.ws.onclose = () => {
-      if (this.wsReconnectAttempts >= 10) {
+      if (this.closed) return;
+      if (this.wsReconnectAttempts >= MAX_WS_RECONNECT_ATTEMPTS) {
         console.warn("ZeroQ: Max WebSocket reconnect attempts reached");
         this.emit("connection_failed", "Max reconnect attempts");
         return;
       }
-      const backoff = Math.min(1e3 * Math.pow(2, this.wsReconnectAttempts), 3e4);
+      const backoff = _PeerMesh.jitter(Math.min(1e3 * Math.pow(2, this.wsReconnectAttempts), MAX_BACKOFF_MS));
       this.wsReconnectAttempts++;
-      setTimeout(() => this.connect(discoveryUrl, topicId), backoff);
+      this.later(() => this.connect(discoveryUrl, topicId), backoff);
     };
   }
   async connectToPeer(peerId) {
+    if (this.closed) return;
     if (this.peers.has(peerId)) return;
     this.knownPeers.add(peerId);
     if (typeof RTCPeerConnection === "undefined") return;
@@ -174,10 +219,11 @@ var PeerMesh = class extends EventEmitter {
       }
     } catch (err) {
       console.error("Error creating offer", err);
-      this.handleConnectionFailure(peerId);
+      this.handleConnectionFailure(peerId, "offer-failed");
     }
   }
   async handleOffer(peerId, sdp) {
+    if (this.closed) return;
     this.knownPeers.add(peerId);
     if (this.peers.has(peerId)) return;
     if (typeof RTCPeerConnection === "undefined") return;
@@ -199,7 +245,7 @@ var PeerMesh = class extends EventEmitter {
       }
     } catch (err) {
       console.error("Error handling offer", err);
-      this.handleConnectionFailure(peerId);
+      this.handleConnectionFailure(peerId, "answer-failed");
     }
   }
   async handleAnswer(peerId, sdp) {
@@ -226,16 +272,21 @@ var PeerMesh = class extends EventEmitter {
     this.peers.set(peerId, { pc, dc });
     dc.onopen = () => {
       this.reconnectTimeouts.delete(peerId);
+      this.peerAttempts.delete(peerId);
       this.lastSeen.set(peerId, Date.now());
       this.emit("peer_connected", peerId);
       const interval = setInterval(() => {
+        if (this.closed) {
+          clearInterval(interval);
+          return;
+        }
         if (dc.readyState === "open") {
           dc.send(JSON.stringify({ type: "__ping__" }));
         }
         const last = this.lastSeen.get(peerId) || 0;
         if (Date.now() - last > 3e4) {
           this.removePeer(peerId);
-          this.handleConnectionFailure(peerId);
+          this.handleConnectionFailure(peerId, "ping-timeout");
         }
       }, 1e4);
       this.pingIntervals.set(peerId, interval);
@@ -256,9 +307,9 @@ var PeerMesh = class extends EventEmitter {
             return;
           }
           if (msg.type === "__gossip__") {
-            const peers = msg.peers;
+            const peers = Array.isArray(msg.peers) ? msg.peers : [];
             for (const p of peers) {
-              if (!this.knownPeers.has(p)) {
+              if (typeof p === "string" && !this.knownPeers.has(p)) {
                 this.knownPeers.add(p);
                 this.connectToPeer(p);
               }
@@ -272,12 +323,13 @@ var PeerMesh = class extends EventEmitter {
     };
     dc.onclose = () => {
       this.removePeer(peerId);
-      this.handleConnectionFailure(peerId);
+      this.handleConnectionFailure(peerId, "datachannel-closed");
     };
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === "disconnected" || pc.iceConnectionState === "failed") {
+        this.emit("peer_connection_failed", peerId, pc.iceConnectionState);
         this.removePeer(peerId);
-        this.handleConnectionFailure(peerId);
+        this.handleConnectionFailure(peerId, pc.iceConnectionState);
       }
     };
   }
@@ -298,47 +350,79 @@ var PeerMesh = class extends EventEmitter {
       clearInterval(interval);
       this.pingIntervals.delete(peerId);
     }
+    this.lastSeen.delete(peerId);
     this.emit("peer_disconnected", peerId);
   }
-  handleConnectionFailure(peerId) {
+  handleConnectionFailure(peerId, reason = "unknown") {
+    if (this.closed) return;
+    const attempts = (this.peerAttempts.get(peerId) || 0) + 1;
+    this.peerAttempts.set(peerId, attempts);
+    if (attempts > MAX_PEER_RECONNECT_ATTEMPTS) {
+      console.warn(`ZeroQ: giving up on peer ${peerId} after ${MAX_PEER_RECONNECT_ATTEMPTS} attempts (${reason})`);
+      this.emit("peer_unreachable", peerId, reason);
+      this.reconnectTimeouts.delete(peerId);
+      this.peerAttempts.delete(peerId);
+      this.knownPeers.delete(peerId);
+      return;
+    }
     let delay = this.reconnectTimeouts.get(peerId) || 500;
-    delay = Math.min(delay * 2, 3e4);
+    delay = Math.min(delay * 2, MAX_BACKOFF_MS);
     this.reconnectTimeouts.set(peerId, delay);
-    setTimeout(() => {
+    this.later(() => {
       if (!this.peers.has(peerId)) {
         this.connectToPeer(peerId);
       }
-    }, delay);
+    }, _PeerMesh.jitter(delay));
   }
   broadcast(data) {
-    for (const { dc } of this.peers.values()) {
+    let dropped = 0;
+    for (const [peerId, { dc }] of this.peers.entries()) {
       if (dc.readyState === "open") {
-        if (dc.bufferedAmount > 65536) continue;
+        if (dc.bufferedAmount > BUFFERED_AMOUNT_LIMIT) {
+          dropped++;
+          this.emit("message_dropped", peerId, "backpressure", dc.bufferedAmount);
+          continue;
+        }
         try {
           dc.send(data);
         } catch (err) {
+          dropped++;
+          this.emit("message_dropped", peerId, "send-error", err);
           console.warn("ZeroQ: broadcast error", err);
         }
       }
     }
+    return { peers: this.peers.size, dropped };
   }
   sendToPeer(peerId, data) {
     const peer = this.peers.get(peerId);
     if (peer && peer.dc.readyState === "open") {
-      if (peer.dc.bufferedAmount > 65536) return;
+      if (peer.dc.bufferedAmount > BUFFERED_AMOUNT_LIMIT) {
+        this.emit("message_dropped", peerId, "backpressure", peer.dc.bufferedAmount);
+        return;
+      }
       try {
         peer.dc.send(data);
       } catch (err) {
+        this.emit("message_dropped", peerId, "send-error", err);
         console.warn("ZeroQ: sendToPeer error", err);
       }
     }
   }
   disconnect() {
+    this.closed = true;
+    for (const t of this.pendingTimers) clearTimeout(t);
+    this.pendingTimers.clear();
+    for (const interval of this.pingIntervals.values()) clearInterval(interval);
+    this.pingIntervals.clear();
     this.ws?.close();
-    for (const peerId of this.peers.keys()) {
+    this.ws = null;
+    for (const peerId of [...this.peers.keys()]) {
       this.removePeer(peerId);
     }
     this.reconnectTimeouts.clear();
+    this.peerAttempts.clear();
+    this.knownPeers.clear();
   }
 };
 
@@ -410,6 +494,8 @@ var Serializer = class {
 };
 
 // src/message-broker.ts
+var MAX_RETRIES = 3;
+var SEEN_LIMIT = 1e4;
 var MessageBroker = class {
   peerMesh;
   persistence;
@@ -420,51 +506,94 @@ var MessageBroker = class {
   constructor(peerMesh, persistence) {
     this.peerMesh = peerMesh;
     this.persistence = persistence;
-    this.peerMesh.on("message_received", this.handleMessage.bind(this));
+    this.peerMesh.on("message_received", (data) => {
+      Promise.resolve(this.handleMessage(data)).catch((err) => {
+        console.warn("ZeroQ: failed to handle inbound message", err);
+      });
+    });
   }
-  trackMessage(id) {
-    if (this.seenMessages.has(id)) {
+  /**
+   * Duplicate suppression. Keyed on id + delivery attempt so that a nack()
+   * retry (same id, higher retryCount) is not mistaken for a duplicate of the
+   * original delivery — which previously made redelivery unreachable.
+   */
+  trackMessage(id, attempt = 0) {
+    const key = `${id}:${attempt}`;
+    if (this.seenMessages.has(key)) {
       return false;
     }
-    this.seenMessages.add(id);
-    this.seenMessagesQueue.push(id);
-    if (this.seenMessagesQueue.length > 1e4) {
+    this.seenMessages.add(key);
+    this.seenMessagesQueue.push(key);
+    if (this.seenMessagesQueue.length > SEEN_LIMIT) {
       const oldest = this.seenMessagesQueue.shift();
       if (oldest) this.seenMessages.delete(oldest);
     }
     return true;
   }
   async handleMessage(data) {
-    const msg = Serializer.deserialize(data);
-    if (!this.trackMessage(msg.id)) {
+    let msg;
+    try {
+      msg = Serializer.deserialize(data);
+    } catch (err) {
+      console.warn("ZeroQ: dropping unparseable frame from peer");
       return;
     }
-    await this.persistence.save(msg);
+    if (!msg || typeof msg !== "object" || typeof msg.id !== "string" || msg.id === "" || typeof msg.topic !== "string") {
+      console.warn("ZeroQ: dropping malformed message from peer (missing id/topic)");
+      return;
+    }
+    if (typeof msg.retryCount !== "number" || !Number.isFinite(msg.retryCount) || msg.retryCount < 0) {
+      msg.retryCount = 0;
+    }
+    if (!this.trackMessage(msg.id, msg.retryCount)) {
+      return;
+    }
+    try {
+      await this.persistence.save(msg);
+    } catch (err) {
+      console.warn("ZeroQ: could not persist inbound message", err);
+    }
     if (this.topicHandlers.has(msg.topic)) {
-      this.topicHandlers.get(msg.topic).forEach((h) => h(msg));
+      for (const h of [...this.topicHandlers.get(msg.topic)]) {
+        try {
+          h(msg);
+        } catch (err) {
+          console.warn("ZeroQ: subscriber threw", err);
+        }
+      }
     }
     if (this.queueHandlers.has(msg.topic)) {
       const handlers = this.queueHandlers.get(msg.topic);
       const handler = handlers.shift();
       if (handler) {
-        handler(
-          msg,
-          async () => {
+        handlers.push(handler);
+        const ack = async () => {
+          try {
             await this.persistence.delete(msg.id);
-          },
-          async () => {
+          } catch (err) {
+            console.warn("ZeroQ: ack failed to remove message", err);
+          }
+        };
+        const nack = async () => {
+          try {
             msg.retryCount++;
             await this.persistence.save(msg);
-            if (msg.retryCount < 3) {
+            if (msg.retryCount < MAX_RETRIES) {
               this.peerMesh.broadcast(Serializer.serialize(msg));
             }
+          } catch (err) {
+            console.warn("ZeroQ: nack failed", err);
           }
-        );
-        handlers.push(handler);
+        };
+        try {
+          handler(msg, ack, nack);
+        } catch (err) {
+          console.warn("ZeroQ: consumer threw", err);
+        }
       }
     }
   }
-  async publish(topic, message) {
+  async publish(topic, message, options) {
     const msg = {
       id: crypto.randomUUID(),
       topic,
@@ -473,9 +602,17 @@ var MessageBroker = class {
       seq: 0,
       retryCount: 0
     };
-    this.trackMessage(msg.id);
-    await this.persistence.save(msg);
-    this.peerMesh.broadcast(Serializer.serialize(msg));
+    if (options?.priority !== void 0) {
+      msg.priority = options.priority;
+    }
+    const wire = Serializer.serialize(msg);
+    this.trackMessage(msg.id, 0);
+    try {
+      await this.persistence.save(msg);
+    } catch (err) {
+      console.warn("ZeroQ: could not persist outbound message", err);
+    }
+    this.peerMesh.broadcast(wire);
   }
   subscribe(topic, handler) {
     if (!this.topicHandlers.has(topic)) {
@@ -485,8 +622,9 @@ var MessageBroker = class {
     return {
       topic,
       unsubscribe: () => {
-        const handlers = this.topicHandlers.get(topic) || [];
-        this.topicHandlers.set(topic, handlers.filter((h) => h !== handler));
+        const handlers = (this.topicHandlers.get(topic) || []).filter((h) => h !== handler);
+        if (handlers.length === 0) this.topicHandlers.delete(topic);
+        else this.topicHandlers.set(topic, handlers);
       }
     };
   }
@@ -498,8 +636,9 @@ var MessageBroker = class {
     return {
       queue,
       unsubscribe: () => {
-        const handlers = this.queueHandlers.get(queue) || [];
-        this.queueHandlers.set(queue, handlers.filter((h) => h !== handler));
+        const handlers = (this.queueHandlers.get(queue) || []).filter((h) => h !== handler);
+        if (handlers.length === 0) this.queueHandlers.delete(queue);
+        else this.queueHandlers.set(queue, handlers);
       }
     };
   }
@@ -511,19 +650,28 @@ var ZeroQ = class {
   peerMesh;
   persistence;
   broker;
+  discoveryUrl;
+  topicId;
   constructor(options) {
     LicenseValidator.validate(options);
-    const discoveryUrl = options?.discoveryUrl || "ws://localhost:8080";
-    this.discoveryClient = new DiscoveryClient(discoveryUrl);
+    this.discoveryUrl = options?.discoveryUrl || "ws://localhost:8080";
+    this.topicId = options?.topicId || "default-topic";
+    this.discoveryClient = new DiscoveryClient(this.discoveryUrl);
     this.persistence = new PersistenceLayer();
     this.peerMesh = new PeerMesh();
     this.broker = new MessageBroker(this.peerMesh, this.persistence);
-    this.init();
+    this.init().catch((err) => {
+      console.warn("ZeroQ: initialisation failed", err);
+    });
   }
   async init() {
-    await this.persistence.init();
+    try {
+      await this.persistence.init();
+    } catch (err) {
+      console.warn("ZeroQ: persistence unavailable \u2014 running without durability", err);
+    }
     this.discoveryClient.connect();
-    this.peerMesh.connect("ws://localhost:8080", "default-topic");
+    this.peerMesh.connect(this.discoveryUrl, this.topicId);
   }
   async createTopic(topic) {
     this.discoveryClient.send({ type: "create_topic", topic });
@@ -539,7 +687,7 @@ var ZeroQ = class {
     this.discoveryClient.send({ type: "create_queue", queue });
   }
   async enqueue(queue, message, options) {
-    await this.broker.publish(queue, message);
+    await this.broker.publish(queue, message, { priority: options?.priority });
   }
   async consume(queue, handler) {
     this.discoveryClient.send({ type: "consume", queue });
@@ -547,21 +695,29 @@ var ZeroQ = class {
   }
   async request(topic, message, timeoutMs = 5e3) {
     const replyTo = crypto.randomUUID();
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("Timeout")), timeoutMs);
-      const sub = this.subscribe(replyTo, (msg) => {
-        clearTimeout(timeout);
-        sub.then((s) => s.unsubscribe());
-        resolve(msg.payload);
+    let sub;
+    let timer;
+    try {
+      return await new Promise((resolve, reject) => {
+        timer = setTimeout(() => reject(new Error("Timeout")), timeoutMs);
+        sub = this.broker.subscribe(replyTo, (msg) => resolve(msg.payload));
+        this.discoveryClient.send({ type: "subscribe", topic: replyTo });
+        this.publish(topic, { ...message, replyTo }).catch(reject);
       });
-      this.publish(topic, { ...message, replyTo });
-    });
+    } finally {
+      clearTimeout(timer);
+      sub?.unsubscribe();
+    }
   }
   async reply(topic, handler) {
-    this.subscribe(topic, async (msg) => {
-      if (msg.replyTo) {
+    await this.subscribe(topic, async (msg) => {
+      const replyTo = msg.replyTo ?? (msg.payload && typeof msg.payload === "object" ? msg.payload.replyTo : void 0);
+      if (!replyTo) return;
+      try {
         const response = await handler(msg);
-        this.publish(msg.replyTo, response);
+        await this.publish(replyTo, response);
+      } catch (err) {
+        console.warn("ZeroQ: reply handler failed", err);
       }
     });
   }

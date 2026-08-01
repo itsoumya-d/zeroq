@@ -1,26 +1,26 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta name="keywords" content="free Kafka alternative, P2P serverless message queue, browser WebRTC pub sub broker, reduce Kafka monthly cost, SQS alternative, Apache Kafka (Confluent Cloud $3K-$10K/mo), AWS SQS ($0.40/M req), RabbitMQ">
-    <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ZeroQ - Serverless P2P Message Queue</title>
-  <meta name="description" content="ZeroQ is the best free alternative to Kafka. A serverless, P2P message queue with zero servers, IndexedDB persistence, and ultra-low latency.">
-  <meta name="robots" content="index, follow">
-  
+  <meta name="keywords" content="P2P serverless message queue, browser WebRTC pub sub, WebRTC DataChannel messaging, browser work queue, Kafka alternative for browsers, SQS alternative">
+  <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+  <title>ZeroQ - Peer-to-Peer Message Queue for Browsers</title>
+  <meta name="description" content="ZeroQ is a pre-release peer-to-peer pub/sub and work-queue library for browsers, built on WebRTC DataChannels with IndexedDB storage. At-most-once delivery. Source-available under BSL 1.1; production use requires a paid licence.">
+  <link rel="canonical" href="https://itsoumya-d.github.io/zeroq/">
+
   <!-- Open Graph -->
-  <meta property="og:title" content="ZeroQ - Serverless P2P Message Queue">
-  <meta property="og:description" content="Message queues without Kafka. Without servers. Pure peer-to-peer data flow.">
+  <meta property="og:title" content="ZeroQ - Peer-to-Peer Message Queue for Browsers">
+  <meta property="og:description" content="Pub/sub and work queues directly between browser peers over WebRTC DataChannels. Pre-release, at-most-once delivery, BSL 1.1.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://zeroq.com">
-  <meta property="og:image" content="https://zeroq.com/og-image.jpg">
+  <meta property="og:url" content="https://itsoumya-d.github.io/zeroq/">
+  <meta property="og:site_name" content="ZeroQ">
 
   <!-- Twitter Card -->
-  <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="ZeroQ - Serverless P2P Message Queue">
-  <meta name="twitter:description" content="Message queues without Kafka. Without servers. Pure peer-to-peer data flow.">
-  
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="ZeroQ - Peer-to-Peer Message Queue for Browsers">
+  <meta name="twitter:description" content="Pub/sub and work queues directly between browser peers over WebRTC DataChannels. Pre-release, at-most-once delivery, BSL 1.1.">
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,13 +37,16 @@
     "@type": "SoftwareApplication",
     "name": "ZeroQ",
     "applicationCategory": "DeveloperApplication",
-    "operatingSystem": "Any",
+    "operatingSystem": "Any (modern browser with WebRTC)",
+    "softwareVersion": "1.0.0",
+    "license": "https://mariadb.com/bsl11/",
     "offers": {
       "@type": "Offer",
-      "price": "0",
-      "priceCurrency": "USD"
+      "price": "299.00",
+      "priceCurrency": "USD",
+      "description": "Commercial licence required for any production use. Indie $299/yr, Startup $1,999/yr, Enterprise $9,999/yr, OEM $19,999/yr. Free for personal evaluation, academic research and contributing pull requests."
     },
-    "description": "Serverless P2P Message Queue without Kafka. Zero servers, IndexedDB persistence, and peer-to-peer delivery."
+    "description": "Pre-release peer-to-peer pub/sub and work-queue library for browsers, built on WebRTC DataChannels with IndexedDB storage. At-most-once delivery; no log replay or consumer offsets. Source-available under BSL 1.1, not open source."
   }
   </script>
   <script type="application/ld+json">
@@ -52,10 +55,17 @@
     "@type": "FAQPage",
     "mainEntity": [{
       "@type": "Question",
-      "name": "What is the best free alternative to Kafka?",
+      "name": "Is ZeroQ a free alternative to Kafka?",
       "acceptedAnswer": {
         "@type": "Answer",
-        "text": "ZeroQ is a powerful free alternative to Kafka, providing serverless, peer-to-peer message queuing with zero infrastructure costs and built-in IndexedDB persistence."
+        "text": "No. ZeroQ is source-available under the Business Source License 1.1 and any production use requires a paid commercial licence; it is free only for personal evaluation, academic research and contributing pull requests. It is also not functionally equivalent to Kafka: ZeroQ provides at-most-once delivery with no durable log, no replay and no consumer offsets. It removes the need to operate a message broker for small-scale browser-to-browser fan-out, but a WebSocket signaling server is still required."
+      }
+    }, {
+      "@type": "Question",
+      "name": "What delivery guarantee does ZeroQ provide?",
+      "acceptedAnswer": {
+        "@type": "Answer",
+        "text": "At-most-once, best-effort. publish() resolves as soon as the message is handed to each connected WebRTC DataChannel, including when there are no peers, when the channel is congested, or when the payload exceeds the DataChannel message-size limit; in those cases the message is dropped. There is no visibility timeout, so a consumer that dies without acknowledging triggers no redelivery."
       }
     }]
   }
@@ -669,12 +679,17 @@
       <div class="gsap-fade-up" style="display: flex; flex-direction: column; gap: 32px;">
         <!-- Benchmark -->
         <div class="feature-card" style="padding: 32px;">
-          <h3>Throughput Benchmark</h3>
-          <p>Test your browser's serialization performance.</p>
+          <h3>Serialization Benchmark</h3>
+          <p>Measures how fast <code>JSON.stringify()</code> runs in <em>your</em> browser. This is not a
+             ZeroQ throughput figure &mdash; no peer connection is opened and no message is sent.</p>
           <button id="runBenchmarkBtn" class="btn btn-primary" style="margin: 16px 0;">Click to Benchmark</button>
           <div id="benchmarkResult" style="display: none;">
-            <div style="font-family: var(--font-heading); font-size: 32px; color: var(--secondary); margin-bottom: 8px;">Your browser: <span id="benchmarkCounter">0</span> msgs/sec</div>
-            <p style="font-size: 14px; opacity: 0.7;">Apache Kafka: Requires $400/mo cluster vs ZeroQ: $0, runs locally</p>
+            <div style="font-family: var(--font-heading); font-size: 32px; color: var(--secondary); margin-bottom: 8px;"><span id="benchmarkCounter">0</span> <span style="font-size:18px;">JSON.stringify ops/sec</span></div>
+            <p style="font-size: 14px; opacity: 0.7;">For reference, ZeroQ's measured end-to-end delivery rate is
+               roughly 480 msg/s with IndexedDB persistence enabled and roughly 61,000 msg/s with it disabled,
+               measured on a single machine over an in-process loopback channel &mdash; an upper bound, since a real
+               deployment adds network, DTLS and SCTP. Serialization is not the bottleneck; the per-message
+               IndexedDB transaction is.</p>
           </div>
         </div>
 
@@ -1169,30 +1184,34 @@ q.<span class="code-function">subscribe</span>(<span class="code-keyword">async<
         // Pulse animation
         gsap.to(runBtn, { opacity: 0.4, repeat: -1, yoyo: true, duration: 0.4 });
         
-        // Simulate work
         setTimeout(() => {
           gsap.killTweensOf(runBtn);
-          let dummy = [];
+          // Measures JSON.stringify() throughput in this browser only. This is
+          // NOT a ZeroQ message-throughput figure: no peer connection is opened
+          // and no message is sent. Reported as measured, with no floor and no
+          // clamp on the elapsed time.
+          const ITERATIONS = 100000;
+          let dummy = 0;
           const start = performance.now();
-          for(let i=0; i<1000; i++) {
-             dummy.push(JSON.stringify({id: i, ts: Date.now(), data: "test"}));
+          for (let i = 0; i < ITERATIONS; i++) {
+             dummy += JSON.stringify({id: i, ts: 1735689600000, data: "test"}).length;
           }
-          const end = performance.now();
-          const msgsPerSec = Math.floor((1000 / Math.max(1, end - start)) * 1000);
-          
+          const elapsed = performance.now() - start;
+          const opsPerSec = elapsed > 0 ? Math.floor(ITERATIONS / elapsed * 1000) : 0;
+
           runBtn.style.display = 'none';
           resultDiv.style.display = 'block';
-          
+
           let obj = { val: 0 };
           gsap.to(obj, {
-            val: Math.max(msgsPerSec, 50000), // ensure a nice large number for effect if machine is too fast
+            val: opsPerSec,
             duration: 1.5,
             ease: "power2.out",
             onUpdate: () => {
               counterEl.innerText = Math.floor(obj.val).toLocaleString();
             }
           });
-        }, 800);
+        }, 300);
       });
     }
 

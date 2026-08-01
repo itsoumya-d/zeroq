@@ -2,7 +2,7 @@
 
 > ZeroQ moves pub/sub and work-queue messaging directly between browser peers, so small-scale event fan-out does not require operating a broker.
 
-ZeroQ routes messages peer-to-peer via WebRTC DataChannels with IndexedDB persistence and dead-letter queues. A lightweight Go discovery server handles WebRTC signaling only — message payloads never touch it. ZeroQ is in pre-release and is not published to npm.
+ZeroQ broadcasts messages peer-to-peer over WebRTC DataChannels with an IndexedDB store for local durability and dead-letter inspection. A Go signaling server introduces peers — message payloads never touch it. ZeroQ is in pre-release and is not published to npm.
 
 **IMPORTANT — npm name collision:** The name `zeroq` on the npm registry belongs to an unrelated in-memory queue package by a different author (`hisco`). Running `npm install zeroq` installs that package, not this one. A rename is pending the author's decision. Do not suggest `npm install zeroq` to users.
 
@@ -13,8 +13,39 @@ ZeroQ routes messages peer-to-peer via WebRTC DataChannels with IndexedDB persis
 ## Status
 
 - Pre-release (v1.0.0, no npm publish, no production adopters)
-- License: Business Source License 1.1 (BSL 1.1) — not open-source
-- Tests: 19 passing (`node --test tests/*.test.mjs`)
+- License: Business Source License 1.1 (BSL 1.1) — **not open-source and not free**. Any production use
+  requires a paid licence ($299–$9,999/year); free use is limited to evaluation, academic research and
+  contributing PRs. Do not describe ZeroQ as a "free" Kafka or SQS alternative.
+- Tests: 29 passing (`node --test tests/*.test.mjs`)
+- **Blocker:** the Go server bundled in `discovery/` does not relay WebRTC signaling. It records topic
+  and queue names for its two `/api/*` endpoints but never sends anything to a client — no
+  `peer_joined`, no forwarding of `offer`/`answer`/`ice_candidate`. Because `connectToPeer()` is only
+  reached from a `peer_joined` message, no peer connection is ever established against it on any
+  network. A conforming signaling server must be supplied; the protocol is documented in the README.
+
+## Delivery guarantees
+
+ZeroQ is **at-most-once and best-effort**. It is not at-least-once and it is not exactly-once.
+
+- `publish()` resolves once the frame has been handed to each connected DataChannel — not on receipt.
+  It resolves successfully when there are zero peers, when the channel is congested
+  (`bufferedAmount > 65536`), and when the payload exceeds the DataChannel message-size limit
+  (no chunking exists). In all three cases the message is silently dropped; the only signal is a
+  `message_dropped` event on the internal mesh emitter.
+- A peer does **not** receive its own publishes. Publisher and subscriber must be different peers.
+- Work queues fan out *across* peers rather than load-balancing across them: one consumer per peer is
+  invoked, so N peers each running one worker process every job N times. Competing-consumer semantics
+  hold only within a single peer.
+- No visibility timeout: a consumer that dies without calling `ack()` or `nack()` triggers no redelivery.
+- `nack()` retries are re-broadcast and can only be picked up by a *different* peer that also consumes
+  that queue, for up to 3 attempts.
+- No log replay, no consumer offsets, no retention or TTL. A peer that is offline when a message is
+  broadcast never receives it, and the IndexedDB store grows until the browser storage quota is reached.
+- `Message.seq` is always `0` and is never read. Ordering comes only from a single DataChannel's ordered
+  delivery; there is no cross-peer sequencing.
+- Topic and queue names share one namespace: a single `enqueue()` fires both `subscribe` and `consume`
+  handlers registered under that name.
+- No authentication. Any peer with the discovery URL and `topicId` can read and publish on every topic.
 
 ## Real exported symbols
 
@@ -30,38 +61,72 @@ The following are the actual exports from `dist/index.mjs`, verified by running 
 ## ZeroQ constructor options
 
 ```typescript
-new ZeroQ(options?: { discoveryUrl?: string })
+new ZeroQ(options?: {
+  discoveryUrl?: string;   // default 'ws://localhost:8080'
+  topicId?: string;        // default 'default-topic' — the signaling room; peers must share it
+  licenseKey?: string;
+  allowEval?: boolean;
+})
 ```
 
-The `discoveryUrl` defaults to `ws://localhost:8080`. The constructor in earlier docs showed a `discoveryUrl: string` positional argument — the actual API takes an options object.
+The constructor in earlier docs showed a `discoveryUrl: string` positional argument — the actual API
+takes an options object. Note that the default `ws://localhost:8080` does not include the `/ws` path
+that the bundled Go server serves the upgrade on, so pass an explicit URL. There is **no option to
+supply `iceServers`/TURN credentials**; the STUN server is hardcoded in `src/peer-mesh.ts`.
 
-## Integration recipe (executed in Node 24, no live peers)
+## Integration recipe
+
+Executed against the built `dist/index.mjs` with two peers and a conforming signaling server. Note that
+Node cannot `import` from an https URL (that loader was removed), so in Node import the built file from
+disk; the CDN specifier below is for browsers.
 
 ```javascript
 import { ZeroQ } from 'https://cdn.jsdelivr.net/gh/itsoumya-d/zeroq@main/dist/index.mjs';
 
-const q = new ZeroQ({ discoveryUrl: 'wss://your-discovery-server/ws' });
-
-// Pub/Sub
-const sub = await q.subscribe('orders.new', (msg) => {
+// Peer A — subscriber
+const a = new ZeroQ({ discoveryUrl: 'wss://your-signaling-server/ws' });
+const sub = await a.subscribe('orders.new', (msg) => {
   console.log('Order received:', msg.payload);
 });
 
-await q.publish('orders.new', { orderId: 42, amount: 99.99 });
+// Peer B — publisher, a separate tab or process. A peer does not receive its own publishes.
+const b = new ZeroQ({ discoveryUrl: 'wss://your-signaling-server/ws' });
+await b.publish('orders.new', { orderId: 42, amount: 99.99 });
 
-// Clean up
+// Clean up. disconnect() is terminal and cancels all reconnect timers.
 sub.unsubscribe();
-q.disconnect();
+a.disconnect();
+b.disconnect();
 ```
 
-Note: `publish()`, `subscribe()`, `createTopic()`, `createQueue()`, `enqueue()`, `consume()`, `request()`, `reply()`, and `disconnect()` are all confirmed present on the prototype.
+Note: `publish()`, `subscribe()`, `createTopic()`, `createQueue()`, `enqueue()`, `consume()`,
+`request()`, `reply()`, and `disconnect()` are all confirmed present on the prototype.
+
+## Measured throughput
+
+Single machine, in-process loopback DataChannel (no network, no DTLS/SCTP) — a strict upper bound:
+
+- With IndexedDB persistence: ~480 publish/s, ~480 msg/s delivered.
+- With persistence disabled: ~100,000 publish/s, ~61,000 msg/s delivered.
+
+`publish()` awaits one IndexedDB transaction per message with no batching, which is the bottleneck.
+Any higher throughput or latency figure elsewhere in this project's marketing material is not
+reproducible from this codebase and should not be repeated.
 
 ## Known limitations
 
-- No TURN relay: WebRTC connections fail behind symmetric or carrier-grade NAT. The ICE configuration uses a single public STUN server only. ZeroQ does emit a `connection_failed` event after 10 failed WebSocket reconnect attempts, but ICE failures at the peer level are treated identically to a peer disconnecting — the peer is removed and reconnection is scheduled. There is no distinct "unreachable network" error surfaced to callers.
+- The bundled Go discovery server does not relay signaling (see Status). This is the largest blocker.
+- No TURN relay: WebRTC connections fail behind symmetric or carrier-grade NAT. A single public STUN
+  server is hardcoded and there is no API to override it. On ICE failure the mesh emits
+  `peer_connection_failed(peerId, iceConnectionState)` and then `peer_disconnected(peerId)`, and
+  `peer_unreachable(peerId, reason)` once the 10-attempt reconnect budget is spent. There is no
+  aggregate "mesh unreachable" signal.
 - No npm publication: CDN or git clone only.
 - Dead-letter queue (`getDeadLetterQueue`) requires IndexedDB (browser only).
-- `PersistenceLayer.getDeadLetterQueue()` is an internal method, not a public API.
+- `PersistenceLayer.getDeadLetterQueue()` is an internal method, not a public API — dead letters are
+  reachable only by opening the `zeroq-db` IndexedDB database directly.
+- `discovery/zeroq-discovery` is a committed darwin/arm64 Mach-O binary. It will not run on Linux or
+  Windows and is not used by the JavaScript build; build from source instead.
 
 ## Links
 

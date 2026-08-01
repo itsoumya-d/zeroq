@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ZeroQ vs Apache Kafka & AWS SQS — Free Serverless P2P Message Queue</title>
-    <meta name="description" content="ZeroQ is a free serverless message queue alternative to Apache Kafka and AWS SQS. Routes messages peer-to-peer over WebRTC with browser IndexedDB persistence and dead-letter queues.">
-    <meta name="keywords" content="free Apache Kafka alternative, zeroq vs Apache Kafka, cheap Apache Kafka replacement, open source Apache Kafka alternative">
+    <title>ZeroQ vs Apache Kafka & AWS SQS — Peer-to-Peer Message Queue for Browsers</title>
+    <meta name="description" content="ZeroQ is a pre-release peer-to-peer message queue for browsers, routing messages over WebRTC DataChannels with IndexedDB storage and dead-letter inspection. Delivery is at-most-once. Source-available under BSL 1.1 — production use requires a paid licence.">
+    <meta name="keywords" content="zeroq vs Apache Kafka, WebRTC message queue, browser peer-to-peer pub sub, Apache Kafka alternative for browsers, AWS SQS alternative">
     <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
     <link rel="canonical" href="https://itsoumya-d.github.io/zeroq/vs-apache-kafka.html">
     
@@ -17,8 +17,8 @@
     {
       "@context": "https://schema.org",
       "@type": "WebPage",
-      "name": "ZeroQ vs Apache Kafka & AWS SQS — Free Serverless P2P Message Queue",
-      "description": "ZeroQ is a free serverless message queue alternative to Apache Kafka and AWS SQS. Routes messages peer-to-peer over WebRTC with browser IndexedDB persistence and dead-letter queues.",
+      "name": "ZeroQ vs Apache Kafka & AWS SQS — Peer-to-Peer Message Queue for Browsers",
+      "description": "ZeroQ is a pre-release peer-to-peer message queue for browsers, routing messages over WebRTC DataChannels with IndexedDB storage and dead-letter inspection. Delivery is at-most-once. Source-available under BSL 1.1 — production use requires a paid licence.",
       "publisher": {
         "@type": "Person",
         "name": "Soumya Debnath",
@@ -63,7 +63,7 @@
 
         <main>
             <h1>Why Developers Choose ZeroQ Over Apache Kafka</h1>
-            <p class="lead">ZeroQ is a free serverless message queue alternative to Apache Kafka and AWS SQS. Routes messages peer-to-peer over WebRTC with browser IndexedDB persistence and dead-letter queues.</p>
+            <p class="lead">ZeroQ is a pre-release peer-to-peer message queue for browsers, routing messages over WebRTC DataChannels with IndexedDB storage and dead-letter inspection. Delivery is at-most-once. Source-available under BSL 1.1 — production use requires a paid licence.</p>
 
             <table class="comparison-table">
                 <thead>
@@ -75,14 +75,14 @@
                 </thead>
                 <tbody>
                     <tr>
-                        <td><strong>Annual Cost</strong></td>
-                        <td><span style="color:#EF4444">$120,000/year</span></td>
-                        <td><span style="color:#10B981">$0 / BSL 1.1</span></td>
+                        <td><strong>Cost</strong></td>
+                        <td><span style="color:#EF4444">Varies widely with retention, throughput and vendor</span></td>
+                        <td><span style="color:#10B981">$0 broker hosting, but $299&ndash;$9,999/yr BSL 1.1 licence for any production use; a signaling server is still required</span></td>
                     </tr>
                     <tr>
                         <td><strong>Architecture</strong></td>
                         <td>Centralized Cloud API Servers</td>
-                        <td>100% Client-Side / WebRTC / WebGPU / WASM</td>
+                        <td>100% Client-Side / WebRTC DataChannels</td>
                     </tr>
                     <tr>
                         <td><strong>Data Privacy</strong></td>
@@ -99,19 +99,19 @@
 
             <h2>Key Advantages of ZEROQ</h2>
             <ul class="points">
-                <li><strong>Zero Server Cluster Management </strong> —  No Zookeeper, Kafka brokers, or EC2 nodes to manage</li><li><strong>IndexedDB Persistence </strong> —  Durable local message queue storage inside client browsers</li><li><strong>Pub/Sub & Work Queue Routing </strong> —  Flexible messaging patterns without cloud bills</li><li><strong>Zero Ingestion & Egress Fees </strong> —  Route millions of messages peer-to-peer for $0</li>
+                <li><strong>No Broker Cluster to Manage</strong> &mdash; no Zookeeper, Kafka brokers or EC2 nodes. A WebSocket signaling server is still required to introduce peers.</li><li><strong>IndexedDB Storage</strong> &mdash; messages are written to a local store in each browser. There is no retention policy, so the store grows until the browser storage quota is reached.</li><li><strong>Pub/Sub &amp; Work Queue Routing</strong> &mdash; both patterns are supported. Note that work queues fan out to one consumer <em>per peer</em> rather than to exactly one worker overall.</li><li><strong>No Ingestion or Egress Fees</strong> &mdash; message payloads flow directly between peers and never traverse a server you pay for.</li>
             </ul>
 
             <div class="cta-box">
-                <h2 style="margin-bottom:16px;">Ready to eliminate your cloud infrastructure bill?</h2>
-                <p style="margin-bottom:24px; font-size:18px;">Switch to ZEROQ today and run high-performance systems for $0 server cost.</p>
+                <h2 style="margin-bottom:16px;">Considering ZeroQ?</h2>
+                <p style="margin-bottom:24px; font-size:18px;">Read the delivery guarantees first: ZeroQ suits small-scale browser-to-browser fan-out where message loss is acceptable. It is not a drop-in Kafka or SQS replacement.</p>
                 <a href="index.html" class="btn">Get Started with ZEROQ</a>
             </div>
         </main>
 
         <footer>
             <p>© 2024-2026 Soumya Debnath. Business Source License 1.1 (BSL 1.1).</p>
-            <p>Contact: soumyadebnath1661@gmail.com · +91 7031648617</p>
+            <p>Contact: soumyadebnath1661@gmail.com</p>
         </footer>
     </div>
 </body>
