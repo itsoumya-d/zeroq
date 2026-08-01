@@ -7,190 +7,110 @@
 
 <div align="center">
   <h1>ZeroQ</h1>
-  <p><b>Serverless P2P Message Queue Replacing Kafka and AWS SQS at $0</b></p>
-  
-  [![License: AGPL-3.0](https://img.shields.io/badge/License-BSL_1.1-red.svg)](https://mariadb.com/bsl11/)](https://www.gnu.org/licenses/agpl-3.0)
+  <p><b>Serverless P2P Message Queue — Pub/Sub, Work Queues, and RPC over WebRTC</b></p>
+
+  [![License: BSL 1.1](https://img.shields.io/badge/License-BSL_1.1-red.svg)](https://mariadb.com/bsl11/)
+  [![Status: Pre-Release](https://img.shields.io/badge/status-pre--release-orange.svg)]()
   [![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)]()
-  [![Go](https://img.shields.io/badge/Go-00ADD8?style=flat&logo=go&logoColor=white)]()
   [![WebRTC](https://img.shields.io/badge/WebRTC-333333?style=flat&logo=webrtc&logoColor=white)]()
 </div>
 
 <hr/>
 
+> **WARNING — npm name collision.** The package name `zeroq` on the npm registry is owned by an unrelated author (`hisco`). Running `npm install zeroq` installs their package, not this one. This is a silent failure — your project will compile against the wrong library. A rename of this project is pending the author's decision. **Do not use `npm install zeroq`.**
+
+---
+
 ## Table of Contents
 
 1. [What is ZeroQ?](#what-is-zeroq)
-2. [Why ZeroQ? (The $0 Solution)](#why-zeroq)
-3. [Architecture Overview](#architecture-overview)
-4. [Installation](#installation)
-5. [Usage Examples](#usage-examples)
-   - [Pub/Sub Messaging](#1-pubsub-messaging)
-   - [Work Queues (Load Balancing)](#2-work-queues-load-balancing)
-   - [Request/Reply (RPC)](#3-requestreply-rpc)
-   - [Priority Queues](#4-priority-queues)
-   - [Dead Letter Queues (DLQ)](#5-dead-letter-queues-dlq)
-6. [API Reference](#api-reference)
-7. [Message Delivery Guarantees](#message-delivery-guarantees)
-8. [Wire Protocol Specification](#wire-protocol-specification)
-9. [How P2P Routing Works](#how-p2p-routing-works)
-10. [Comparison with Competitors](#comparison-with-competitors)
-11. [Go Discovery Server](#go-discovery-server)
-12. [Security Model](#security-model)
-13. [Deployment Guide](#deployment-guide)
-14. [Performance Benchmarks](#performance-benchmarks)
-15. [FAQ](#faq)
-16. [Author & License](#author--license)
+2. [Installation](#installation)
+3. [Usage Examples](#usage-examples)
+4. [API Reference](#api-reference)
+5. [Message Delivery Guarantees](#message-delivery-guarantees)
+6. [Architecture Overview](#architecture-overview)
+7. [Go Discovery Server](#go-discovery-server)
+8. [Known Limitations](#known-limitations)
+9. [Comparison with Competitors](#comparison-with-competitors)
+10. [FAQ](#faq)
+11. [Author & License](#author--license)
 
 ---
 
 ## What is ZeroQ?
 
-**ZeroQ** is a serverless, peer-to-peer (P2P) message broker that entirely eliminates the need for expensive managed queuing services like AWS SQS, Apache Kafka, or RabbitMQ. By leveraging WebRTC DataChannels for mesh routing and IndexedDB for persistent storage, ZeroQ creates a decentralized queue directly in the browser or Node.js instances.
+ZeroQ is a serverless, peer-to-peer message broker. By leveraging WebRTC DataChannels for mesh routing and IndexedDB for persistent storage, ZeroQ creates a decentralised queue directly in the browser or Node.js. A lightweight Go discovery server handles WebRTC signaling — actual message payloads flow directly between peers.
 
-### Key Features:
-- **Zero Infrastructure:** No dedicated broker servers required.
-- **P2P Mesh Network:** Direct peer-to-peer message routing via WebRTC.
-- **Durable Persistence:** Built-in IndexedDB backing for at-least-once delivery.
-- **Versatile Patterns:** Supports Pub/Sub, Work Queues, Request/Reply, and Priority Queues.
-- **Dead Letter Queues (DLQ):** Automatic retries and DLQ routing for failed messages.
-- **Lightweight Discovery:** A tiny Go-based discovery server for WebRTC signaling.
+### Key Features
 
-## Why ZeroQ?
-
-Traditional message queues cost money and require maintenance. For instance, AWS SQS charges per request, and Kafka requires expensive Zookeeper/Kraft clusters. ZeroQ operates completely locally and peer-to-peer, resulting in **$0 operational costs** for message routing.
-
-| Metric | Managed SQS | Hosted Kafka | **ZeroQ** |
-|--------|------------|--------------|-----------|
-| **Base Cost** | ~$0.40 / million reqs | $100s / month | **$0** |
-| **Infrastructure** | Fully Managed | Heavy/Clusters | **None (P2P)** |
-| **Latency** | 20-50ms | 5-10ms | **1-5ms (Local/LAN)** |
-| **Setup Time** | Minutes | Days | **Seconds** |
-
----
-
-## Architecture Overview
-
-ZeroQ operates on a hybrid topology. A lightweight discovery server (written in Go) handles initial peer introductions (WebRTC signaling), while actual message payloads flow directly between peers in a full mesh network.
-
-```mermaid
-graph TD
-    subgraph Browser / Node Instances
-        P1[Peer 1 - Publisher]
-        P2[Peer 2 - Consumer]
-        P3[Peer 3 - Worker]
-        P4[Peer 4 - Worker]
-    end
-
-    subgraph Infrastructure
-        DS[Go Discovery Server]
-    end
-
-    P1 -.->|1. WebSocket Signaling| DS
-    P2 -.->|1. WebSocket Signaling| DS
-    P3 -.->|1. WebSocket Signaling| DS
-    P4 -.->|1. WebSocket Signaling| DS
-
-    P1 ===|2. WebRTC DataChannel Mesh| P2
-    P1 ===|2. WebRTC DataChannel Mesh| P3
-    P1 ===|2. WebRTC DataChannel Mesh| P4
-    P2 ===|2. WebRTC DataChannel Mesh| P3
-    P3 ===|2. WebRTC DataChannel Mesh| P4
-
-    subgraph Internal Architecture (Per Peer)
-        Client[Client App] --> Broker[Message Broker]
-        Broker --> Mesh[Peer Mesh]
-        Broker --> IDB[(IndexedDB Persistence)]
-    end
-```
-
----
-
-## 🔬 WebRTC Mesh Network & Kademlia DHT Research
-
-ZeroQ builds on peer-to-peer distributed hash table (DHT) algorithms and gossip mesh networks to guarantee resilient, serverless message queue delivery.
-
-### 🕸️ Full WebRTC Peer Mesh & Gossip Protocol
-- **Gossip Discovery**: Peer discovery over WebRTC DataChannels using gossip protocols. Connected nodes dynamically discover and route messages through optimal mesh paths.
-- **Continuous Health Monitoring**: Ping/pong health checks with 5-second interval heartbeats monitor peer latency and drop unhealthy links automatically.
-
-### 🛡️ Message Deduplication & Memory Management
-- **10K Message ID Tracking**: Fixed-capacity sliding window LRU cache tracking the last 10,000 unique message UUIDs, preventing broadcast loops and redundant queue consumption across dense mesh networks.
-
-### 🔄 Auto-Reconnect Engine (Exponential Backoff + Full Jitter)
-- **Automatic Network Recovery**: Reconnection algorithm featuring exponential backoff with randomized full jitter ($T_{backoff} = \min(T_{max}, T_{base} \times 2^{\text{attempt}}) \pm \text{jitter}$), protecting signaling nodes from thundering herd spikes during network reconnects.
-
-### 🔬 Research Foundation
-> **Research Citation:**  
-> Maymounkov, P., & Mazières, D. (2002). *Kademlia: A Peer-to-Peer Information System Based on the XOR Metric*. International Workshop on Peer-to-Peer Systems (IPTPS 2002). [kademlia.scs.stanford.edu](https://kademlia.scs.stanford.edu)
-
-### 💻 Usage Example: Mesh Gossip, Deduplication & Auto-Reconnect
-
-```typescript
-import { ZeroQ } from 'zeroq';
-
-const zeroq = new ZeroQ('ws://discovery.yourdomain.com/ws', {
-  meshTopology: 'gossip',
-  dedupCapacity: 10000, // Tracks 10K message IDs for deduplication
-  autoReconnect: true,
-  backoffMaxMs: 30000
-});
-
-await zeroq.subscribe('orders.processed', (msg) => {
-  console.log('Processed order:', msg.payload);
-});
-```
+- **Zero Infrastructure:** No dedicated broker servers required for message routing.
+- **P2P Mesh Network:** Direct peer-to-peer message routing via WebRTC DataChannels.
+- **Durable Persistence:** IndexedDB-backed at-least-once delivery (browser only).
+- **Versatile Patterns:** Pub/Sub, Work Queues, Request/Reply, Priority Queues, Dead-Letter Queues.
+- **Gossip Discovery:** Peer discovery propagates through the mesh via gossip.
+- **Auto-Reconnect:** Exponential backoff with jitter on both WebSocket and peer connections.
 
 ---
 
 ## Installation
 
-You can install ZeroQ into your project via npm:
+This library is **not published to npm**. Use one of these two paths:
 
-```bash
-npm install zeroq
+### Option A — jsDelivr CDN (browser, no build step)
+
+```html
+<script type="module">
+  import { ZeroQ } from 'https://cdn.jsdelivr.net/gh/itsoumya-d/zeroq@main/dist/index.mjs';
+</script>
 ```
 
-*Note: Ensure your environment supports IndexedDB and WebRTC (modern browsers, or Node.js with wrtc/fake-indexeddb polyfills).*
+### Option B — Clone and build
+
+```bash
+git clone https://github.com/itsoumya-d/zeroq.git
+cd zeroq
+npm install
+npm run build
+# dist/ is now available locally
+```
 
 ---
 
 ## Usage Examples
 
-### 1. Pub/Sub Messaging
-Broadcast a message to all connected subscribers of a topic.
+### Constructor
 
 ```typescript
-import { ZeroQ } from 'zeroq';
+import { ZeroQ } from '...'; // from dist/index.mjs
 
-const zeroq = new ZeroQ('ws://discovery.yourdomain.com/ws');
+const zeroq = new ZeroQ({ discoveryUrl: 'wss://discovery.yourdomain.com/ws' });
+// discoveryUrl defaults to 'ws://localhost:8080' if omitted
+```
 
+### 1. Pub/Sub Messaging
+
+```typescript
 // Subscriber
 await zeroq.subscribe('news.updates', (msg) => {
-  console.log('Received News:', msg.payload);
+  console.log('Received:', msg.payload);
 });
 
 // Publisher
 await zeroq.createTopic('news.updates');
-await zeroq.publish('news.updates', { headline: 'ZeroQ reaches v1.0!' });
+await zeroq.publish('news.updates', { headline: 'ZeroQ hits pre-release!' });
 ```
 
 ### 2. Work Queues (Load Balancing)
-Distribute tasks across multiple workers using round-robin delivery.
 
 ```typescript
-// Worker 1
+// Worker
 await zeroq.consume('image-processing', (msg, ack, nack) => {
   try {
     processImage(msg.payload.url);
-    ack(); // Acknowledge completion
+    ack();
   } catch (err) {
-    nack(); // Requeue for retry
+    nack(); // Requeue; moved to DLQ after 3 attempts
   }
-});
-
-// Worker 2
-await zeroq.consume('image-processing', (msg, ack, nack) => {
-  // Same logic...
 });
 
 // Producer
@@ -199,39 +119,22 @@ await zeroq.enqueue('image-processing', { url: 'https://example.com/img1.jpg' })
 ```
 
 ### 3. Request/Reply (RPC)
-Send a request and wait for a direct reply over the queue.
 
 ```typescript
 // Server
 await zeroq.reply('rpc.getUser', async (msg) => {
-  const user = await db.getUser(msg.payload.id);
-  return { user };
+  return { user: await db.getUser(msg.payload.id) };
 });
 
 // Client
 const response = await zeroq.request('rpc.getUser', { id: 123 }, 5000);
-console.log('User data:', response.user);
 ```
 
 ### 4. Priority Queues
-Prioritize urgent messages over standard ones.
 
 ```typescript
 await zeroq.enqueue('alerts', { severity: 'CRITICAL' }, { priority: 1 });
 await zeroq.enqueue('alerts', { severity: 'INFO' }, { priority: 10 });
-```
-
-### 5. Dead Letter Queues (DLQ)
-Messages that fail repeatedly (NACKed 3 times) are moved to the DLQ.
-
-```typescript
-// Accessing the persistence layer directly to inspect DLQ
-import { PersistenceLayer } from 'zeroq/persistence';
-
-const db = new PersistenceLayer();
-await db.init();
-const failedMessages = await db.getDeadLetterQueue();
-console.log('Dead letters:', failedMessages);
 ```
 
 ---
@@ -240,102 +143,83 @@ console.log('Dead letters:', failedMessages);
 
 ### `class ZeroQ`
 
-#### `constructor(discoveryUrl: string)`
-Initializes the ZeroQ client and connects to the discovery server.
+#### `constructor(options?: { discoveryUrl?: string })`
+Initialises the ZeroQ client. Note: earlier documentation showed a positional string argument — the actual API takes an options object.
 
 #### `async createTopic(topic: string): Promise<void>`
-Registers a new pub/sub topic with the discovery server.
+Registers a pub/sub topic with the discovery server.
 
 #### `async publish(topic: string, message: any): Promise<void>`
-Publishes a payload to a specific topic. Persists locally until synchronized.
+Publishes a payload to a topic.
 
 #### `async subscribe(topic: string, handler: (msg: Message) => void): Promise<Subscription>`
-Subscribes to a topic. The handler is invoked for every message matching the topic.
+Subscribes to a topic. Returns a `Subscription` with `.unsubscribe()`.
 
 #### `async createQueue(queue: string): Promise<void>`
 Registers a distributed work queue.
 
 #### `async enqueue(queue: string, message: any, options?: { priority?: number; delay?: number }): Promise<void>`
-Adds a message to a work queue. It will be delivered to a single worker in a round-robin fashion.
+Adds a message to a work queue.
 
 #### `async consume(queue: string, handler: (msg: Message, ack: () => void, nack: () => void) => void): Promise<Consumer>`
-Consumes messages from a queue. You MUST call `ack()` upon successful processing, or `nack()` to trigger a retry.
+Consumes from a queue. Returns a `Consumer` with `.unsubscribe()`. Call `ack()` on success or `nack()` to retry (max 3 times before dead-letter).
 
 #### `async request(topic: string, message: any, timeoutMs?: number): Promise<any>`
-Sends an RPC request and returns a Promise that resolves when the reply is received.
+RPC pattern. Rejects with `Timeout` if no reply arrives within `timeoutMs`.
 
 #### `async reply(topic: string, handler: (msg: Message) => any): Promise<void>`
-Listens for RPC requests and automatically publishes the returned value back to the requester.
+Listens for RPC requests and publishes the returned value back.
 
 #### `disconnect(): void`
-Closes the discovery WebSocket connection and shuts down local queues.
+Closes the WebSocket and all peer connections.
+
+**Not exported (internal only):** `PersistenceLayer`, `PeerMesh`, `MessageBroker`, `DiscoveryClient`. The subpath `zeroq/persistence` does not exist.
 
 ---
 
 ## Message Delivery Guarantees
 
-ZeroQ provides **At-Least-Once** delivery guarantees out of the box:
-1. **Persistence First:** When `publish` or `enqueue` is called, the message is instantly written to local IndexedDB.
-2. **Mesh Transmission:** The message is serialized and pushed to peers.
-3. **Acknowledgment:** For work queues, the consumer must call `ack()`. This deletes the message from local IndexedDB.
-4. **Retry:** If `nack()` is called, the retry counter increments. After 3 attempts, it remains in the DB as a Dead Letter.
+ZeroQ provides **at-least-once** delivery for work queues:
+
+1. `publish`/`enqueue` writes the message to local IndexedDB first (browser only).
+2. The message is broadcast to peers over DataChannels.
+3. Consumers call `ack()` on success (removes from IndexedDB) or `nack()` to retry.
+4. After 3 NACKs, the message stays in IndexedDB as a dead letter.
+
+Pub/Sub messages have no persistence guarantee — if no subscriber is connected when a message is broadcast, it is lost.
 
 ---
 
-## Wire Protocol Specification
+## Architecture Overview
 
-ZeroQ uses a lightweight JSON envelope for all P2P communication.
+```mermaid
+graph TD
+    subgraph Browser / Node Instances
+        P1[Peer 1 - Publisher]
+        P2[Peer 2 - Consumer]
+        P3[Peer 3 - Worker]
+    end
 
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "topic": "orders.new",
-  "payload": {
-    "orderId": 12345,
-    "amount": 99.99
-  },
-  "timestamp": 1678888999999,
-  "seq": 1,
-  "priority": 0,
-  "retryCount": 0,
-  "replyTo": "tmp-queue-987"
-}
+    subgraph Infrastructure
+        DS[Go Discovery Server]
+    end
+
+    P1 -.->|WebSocket Signaling| DS
+    P2 -.->|WebSocket Signaling| DS
+    P3 -.->|WebSocket Signaling| DS
+
+    P1 ===|WebRTC DataChannel Mesh| P2
+    P1 ===|WebRTC DataChannel Mesh| P3
+    P2 ===|WebRTC DataChannel Mesh| P3
 ```
 
----
-
-## How P2P Routing Works
-
-1. **Signaling:** When a new `ZeroQ` instance boots, it connects via WebSocket to the Go Discovery Server.
-2. **Peer Matching:** The server notifies existing peers (`peer_joined` event).
-3. **DataChannels:** Peers establish WebRTC DataChannels using ICE traversal (STUN/TURN).
-4. **Broadcasting:** Messages are pushed over `RTCDataChannel.send()`.
-5. **Topic Filtering:** The local `MessageBroker` intercepts incoming stringified JSON, deserializes it, and matches the `topic` field against local handlers.
-
----
-
-## Comparison with Competitors
-
-| Feature | ZeroQ | Kafka | AWS SQS | Redis Pub/Sub | NATS |
-|---------|-------|-------|---------|---------------|------|
-| **Cost** | **$0** | High | Pay-per-req | Medium | Low |
-| **Topology** | P2P Mesh | Centralized | Cloud | Centralized | Centralized |
-| **Persistence** | IndexedDB | Disk Log | AWS S3/Disk | In-Memory | Disk/Mem |
-| **DLQ Support** | Yes | Manual | Yes | No | Yes |
-| **RPC Patterns**| Native | Complex | Complex | Manual | Native |
+Message deduplication tracks up to 10,000 message IDs in a sliding LRU window. Peer health is monitored with ping/pong every 10 seconds; peers unseen for 30 seconds are dropped.
 
 ---
 
 ## Go Discovery Server
 
-The signaling backend is written in ultra-fast Go. It only routes metadata (IPs/Topics), NEVER the message payloads, ensuring absolute data privacy.
-
-### API Endpoints
-- `GET /ws` - WebSocket signaling upgrade
-- `GET /api/topics` - List all active topics
-- `GET /api/queues` - List all active queues
-
-### Building the Server
+The signaling backend handles initial peer introductions and topic registration. It never sees message payloads.
 
 ```bash
 cd discovery
@@ -344,37 +228,44 @@ go build -o zeroq-discovery
 ./zeroq-discovery
 ```
 
-## Deployment Guide
+**Endpoints:**
+- `GET /ws` — WebSocket signaling upgrade
+- `GET /api/topics` — List active topics
+- `GET /api/queues` — List active queues
 
-Deploying the discovery server requires zero configuration. It is entirely stateless.
+---
 
-**Docker Deployment:**
-```dockerfile
-FROM golang:1.20-alpine
-WORKDIR /app
-COPY discovery/ .
-RUN go build -o zeroq-server
-EXPOSE 8080
-CMD ["./zeroq-server"]
-```
+## Known Limitations
 
-Run via Docker:
-```bash
-docker run -d -p 8080:8080 zeroq-server
-```
+- **Pre-release status.** Not on npm. No production adopters. API may change.
+- **No npm publication.** Running `npm install zeroq` installs an unrelated library. See Installation above.
+- **No TURN relay — connections fail behind symmetric or carrier-grade NAT.** The ICE configuration uses a single public STUN server (`stun:stun.l.google.com:19302`). STUN cannot traverse symmetric NAT or many mobile carrier-grade NAT deployments; those peers cannot connect at all. When ICE fails, `pc.oniceconnectionstatechange` fires with state `'failed'` or `'disconnected'`; the peer is removed and exponential-backoff reconnection is scheduled. The `connection_failed` event is emitted after WebSocket reconnects are exhausted (10 attempts), but ICE-level failures (symmetric NAT) are treated identically to a peer disconnecting — callers cannot distinguish "unreachable network" from "peer left". If you need reliable connectivity across arbitrary networks, supply your own TURN server.
+- **Dead-letter queue requires IndexedDB** (browser only). In Node.js, `PersistenceLayer.init()` is a no-op and messages are not persisted.
+- **`zeroq/persistence` does not exist** as an importable subpath. `PersistenceLayer` is an internal class.
+- **No authentication.** Any peer knowing the discovery URL and topic ID can join.
+- **WebRTC polyfills needed for Node.js backend use** (`node-datachannel` or `wrtc`, plus `fake-indexeddb`).
+
+---
+
+## Comparison with Competitors
+
+| Feature | ZeroQ | Kafka | AWS SQS | Redis Pub/Sub | NATS |
+|---------|-------|-------|---------|---------------|------|
+| **Cost** | $0 (infra) | High | Pay-per-req | Medium | Low |
+| **Topology** | P2P Mesh | Centralized | Cloud | Centralized | Centralized |
+| **Persistence** | IndexedDB (browser) | Disk Log | AWS S3/Disk | In-Memory | Disk/Mem |
+| **DLQ Support** | Yes | Manual | Yes | No | Yes |
+| **RPC Patterns**| Native | Complex | Complex | Manual | Native |
 
 ---
 
 ## FAQ
 
-**Q: Does ZeroQ support Node.js backend to backend?**
-A: Yes! You will need WebRTC polyfills (e.g. `node-datachannel` or `wrtc`) and `fake-indexeddb` to run ZeroQ in a pure Node environment.
+**Q: Does ZeroQ support Node.js?**
+A: Yes, with polyfills: `node-datachannel` (or `wrtc`) for WebRTC and `fake-indexeddb` for persistence.
 
-**Q: Are my messages stored on the discovery server?**
-A: No. Messages go directly from Peer A to Peer B. The server only sees WebRTC handshakes (SDP/ICE candidates) and topic registration strings.
-
-**Q: How does round-robin work without a central broker?**
-A: ZeroQ uses a deterministic hashing algorithm across connected peers in the mesh to decide which peer processes a queued task. If a peer drops before ACK, the originating peer re-queues it.
+**Q: Are messages stored on the discovery server?**
+A: No. The server only routes WebRTC handshakes (SDP/ICE candidates).
 
 ---
 
@@ -382,16 +273,13 @@ A: ZeroQ uses a deterministic hashing algorithm across connected peers in the me
 
 **Author:** Soumya Debnath  
 **Email:** [soumyadebnath1661@gmail.com](mailto:soumyadebnath1661@gmail.com)  
-**Phone:** +91 7031648617  
-
-**License:** AGPL-3.0 License. Free for commercial and non-commercial use.
+**GitHub:** [github.com/itsoumya-d](https://github.com/itsoumya-d)
 
 ---
 
-## ⚖️ License — Business Source License 1.1
+## License — Business Source License 1.1
 
 > **Source-available, NOT open-source. All production use requires a paid license.**
-> Replaces: Kafka, AWS SQS, RabbitMQ
 
 | Tier | Price | For |
 |:-----|:------|:----|
@@ -402,7 +290,5 @@ A: ZeroQ uses a deterministic hashing algorithm across connected peers in the me
 | **Full IP Buyout** | $750,000 | Complete ownership transfer |
 
 **Free use limited to:** Personal evaluation, academic research, contributing via PRs.
-
-📧 [soumyadebnath1661@gmail.com](mailto:soumyadebnath1661@gmail.com) · 📞 [+91 7031648617](tel:+917031648617) · 🐙 [github.com/itsoumya-d](https://github.com/itsoumya-d)
 
 © 2024-2026 Soumya Debnath. All Rights Reserved.
