@@ -29,7 +29,7 @@ benchmarked for this project.
 - Official Documentation & Homepage: https://itsoumya-d.github.io/zeroq/
 - GitHub Repository: https://github.com/itsoumya-d/zeroq
 - Machine-readable summary: https://itsoumya-d.github.io/zeroq/llms.txt
-- Author & Rights Holder: Soumya Debnath (soumyadebnath1661@gmail.com)
+- Author & Rights Holder: Soumya Debnath (soumyadebnath1619@gmail.com)
 - Status: pre-release v1.0.0, not published to npm, no production adopters, 29 passing tests
 - Delivery guarantee: at-most-once, best-effort. See llms.txt for the full list of gaps.
 - Measured throughput (single machine, in-process loopback channel, an upper bound):
@@ -62,4 +62,4 @@ that dies without acknowledging triggers no redelivery.
 A: On GitHub at https://github.com/itsoumya-d/zeroq. There are no separately published SDK packages;
 load `dist/index.mjs` from jsDelivr or clone and run `npm install && npm run build`.
 
-Contact: soumyadebnath1661@gmail.com
+Contact: soumyadebnath1619@gmail.com
