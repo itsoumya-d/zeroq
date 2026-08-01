@@ -591,12 +591,12 @@
         <div class="metric-label">Servers Required</div>
       </div>
       <div class="metric-card gsap-fade-up">
-        <div class="metric-value" data-val="100">100</div>
-        <div class="metric-label">% IndexedDB Persistent</div>
+        <div class="metric-value" data-val="1">1</div>
+        <div class="metric-label">WebSocket signaling server still required</div>
       </div>
       <div class="metric-card gsap-fade-up">
-        <div class="metric-value" data-val="1">1</div>
-        <div class="metric-label">ms P2P Delivery</div>
+        <div class="metric-value" data-val="0">0</div>
+        <div class="metric-label">Message bytes through a server</div>
       </div>
     </div>
   </section>
@@ -615,8 +615,9 @@
       </div>
       <div class="cost-card highlight gsap-fade-up">
         <div class="cost-title">ZeroQ</div>
-        <div class="cost-price">$0<span style="font-size: 20px; color: var(--text-body); font-weight: 400;">/yr</span></div>
-        <p>Peer-to-peer, offline-first, completely free for standard usage.</p>
+        <div class="cost-price">$0<span style="font-size: 20px; color: var(--text-body); font-weight: 400;"> broker</span></div>
+        <p>No broker to host: payloads flow peer-to-peer. A WebSocket signaling server is still
+           required, and production use needs a BSL 1.1 licence &mdash; see Pricing below.</p>
       </div>
       <div class="cost-card gsap-fade-up">
         <div class="cost-title">Confluent Kafka</div>
@@ -695,7 +696,7 @@
 
         <!-- WebRTC Stats -->
         <div class="feature-card" style="padding: 32px; font-family: var(--font-code);">
-          <h3 style="font-family: var(--font-heading); margin-bottom: 16px;">WebRTC DataChannel Stats</h3>
+          <h3 style="font-family: var(--font-heading); margin-bottom: 16px;">WebRTC DataChannel Stats <span style="font-size:13px; font-family: var(--font-body); opacity:0.7;">(mock values &mdash; no peer connection is open)</span></h3>
           <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: #A6ACCD;">
             <div>Channel State: <span style="color: #C3E88D;">open</span></div>
             <div>Buffered Amount: <span id="webrtcBuffer">0</span> bytes</div>
@@ -745,11 +746,13 @@
       
       <div id="code-pub" class="tab-content active" style="padding: 0; background: transparent; border: none;">
         <div class="code-block">
-<span class="code-keyword">import</span> { ZeroQ } <span class="code-keyword">from</span> <span class="code-string">'@zeroq/core'</span>;
+<span class="code-keyword">import</span> { ZeroQ } <span class="code-keyword">from</span> <span class="code-string">'https://cdn.jsdelivr.net/gh/itsoumya-d/zeroq@main/dist/index.mjs'</span>;
 
-<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({ name: <span class="code-string">'orders'</span> });
+<span class="code-keyword">// A peer never receives its own publishes: the subscriber must be a different</span>
+<span class="code-keyword">// tab, worker or process pointed at the same signaling server and topicId.</span>
+<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({ discoveryUrl: <span class="code-string">'wss://your-signaling-server/ws'</span> });
 
-<span class="code-keyword">await</span> q.<span class="code-function">publish</span>({
+<span class="code-keyword">await</span> q.<span class="code-function">publish</span>(<span class="code-string">'orders'</span>, {
   id: <span class="code-string">'ord_123'</span>,
   amount: 49.99,
   status: <span class="code-string">'pending'</span>
@@ -758,33 +761,52 @@
       </div>
       <div id="code-sub" class="tab-content" style="padding: 0; background: transparent; border: none;">
         <div class="code-block">
-<span class="code-keyword">import</span> { ZeroQ } <span class="code-keyword">from</span> <span class="code-string">'@zeroq/core'</span>;
+<span class="code-keyword">import</span> { ZeroQ } <span class="code-keyword">from</span> <span class="code-string">'https://cdn.jsdelivr.net/gh/itsoumya-d/zeroq@main/dist/index.mjs'</span>;
 
-<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({ name: <span class="code-string">'orders'</span> });
+<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({ discoveryUrl: <span class="code-string">'wss://your-signaling-server/ws'</span> });
 
-q.<span class="code-function">subscribe</span>(<span class="code-keyword">async</span> (msg) => {
-  <span class="code-function">console.log</span>(<span class="code-string">'Received order:'</span>, msg.data.id);
-  <span class="code-keyword">await</span> <span class="code-function">processOrder</span>(msg.data);
-  msg.<span class="code-function">ack</span>();
+<span class="code-keyword">// subscribe(topic, handler). The handler gets one argument: the envelope</span>
+<span class="code-keyword">// { id, topic, payload, timestamp, seq, priority?, retryCount }.</span>
+<span class="code-keyword">const</span> sub = <span class="code-keyword">await</span> q.<span class="code-function">subscribe</span>(<span class="code-string">'orders'</span>, (msg) => {
+  <span class="code-function">console.log</span>(<span class="code-string">'Received order:'</span>, msg.payload.id);
+  <span class="code-function">processOrder</span>(msg.payload);
+});
+
+<span class="code-keyword">// Work queues use consume(queue, handler) and give you ack/nack:</span>
+<span class="code-keyword">await</span> q.<span class="code-function">consume</span>(<span class="code-string">'orders'</span>, (msg, ack, nack) => {
+  <span class="code-keyword">try</span> { <span class="code-function">processOrder</span>(msg.payload); <span class="code-function">ack</span>(); } <span class="code-keyword">catch</span> { <span class="code-function">nack</span>(); }
 });
         </div>
       </div>
       <div id="code-dlq" class="tab-content" style="padding: 0; background: transparent; border: none;">
         <div class="code-block">
-<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({ 
-  name: <span class="code-string">'orders'</span>,
-  deadLetterExchange: <span class="code-string">'orders_dlq'</span>,
-  maxRetries: 3
+<span class="code-keyword">// There is no deadLetterExchange option and no maxRetries option.</span>
+<span class="code-keyword">// nack() increments retryCount and re-broadcasts, up to 3 attempts; after</span>
+<span class="code-keyword">// that the message stays in the local IndexedDB store as a dead letter.</span>
+<span class="code-keyword">await</span> q.<span class="code-function">consume</span>(<span class="code-string">'orders'</span>, (msg, ack, nack) => {
+  <span class="code-keyword">if</span> (msg.retryCount &gt;= 2) { <span class="code-function">sendToOpsDashboard</span>(msg); <span class="code-function">ack</span>(); <span class="code-keyword">return</span>; }
+  <span class="code-keyword">try</span> { <span class="code-function">processOrder</span>(msg.payload); <span class="code-function">ack</span>(); } <span class="code-keyword">catch</span> { <span class="code-function">nack</span>(); }
 });
+
+<span class="code-keyword">// NOTE: retries are re-broadcast, so only a DIFFERENT peer that also</span>
+<span class="code-keyword">// consumes this queue can pick them up. There is no public accessor for</span>
+<span class="code-keyword">// the dead-letter store; open the 'zeroq-db' IndexedDB database directly.</span>
         </div>
       </div>
       <div id="code-persist" class="tab-content" style="padding: 0; background: transparent; border: none;">
         <div class="code-block">
-<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({ 
-  name: <span class="code-string">'orders'</span>,
-  storage: <span class="code-string">'indexeddb'</span>, // Persists across reloads
-  sync: <span class="code-string">'webrtc'</span>      // P2P sync across devices
+<span class="code-keyword">// Persistence and WebRTC transport are always on; there are no storage or</span>
+<span class="code-keyword">// sync options. The full option set is:</span>
+<span class="code-keyword">const</span> q = <span class="code-keyword">new</span> <span class="code-function">ZeroQ</span>({
+  discoveryUrl: <span class="code-string">'wss://your-signaling-server/ws'</span>,  <span class="code-keyword">// default 'ws://localhost:8080'</span>
+  topicId:      <span class="code-string">'orders-room'</span>,                     <span class="code-keyword">// signaling room; peers must share it</span>
+  licenseKey:   <span class="code-string">'BSL11-...'</span>,                       <span class="code-keyword">// commercial licence key</span>
+  allowEval:    <span class="code-keyword">true</span>                              <span class="code-keyword">// silence the commercial-use notice</span>
 });
+
+<span class="code-keyword">// Messages are written to the local 'zeroq-db' IndexedDB store, so they</span>
+<span class="code-keyword">// survive a reload in that browser. They are NOT replayed to peers that</span>
+<span class="code-keyword">// were offline, and there is no retention policy or TTL.</span>
         </div>
       </div>
     </div>
@@ -815,17 +837,20 @@ q.<span class="code-function">subscribe</span>(<span class="code-keyword">async<
       <div class="feature-card gsap-fade-up">
         <div class="feature-icon">🌊</div>
         <h3>Backpressure</h3>
-        <p>Intelligent flow control prevents fast producers from overwhelming slow consumers.</p>
+        <p>When a DataChannel's <code>bufferedAmount</code> exceeds 64&nbsp;KB the message is dropped and a
+           <code>message_dropped</code> event is emitted. Producers are not paused and nothing is re-queued.</p>
       </div>
       <div class="feature-card gsap-fade-up">
         <div class="feature-icon">⭐</div>
         <h3>Priority Queues</h3>
-        <p>Ensure critical events bypass standard traffic with strict priority tiering.</p>
+        <p><code>enqueue()</code> carries a <code>priority</code> value on the message envelope for consumers to
+           read. It does <em>not</em> reorder delivery &mdash; there is no priority scheduler.</p>
       </div>
       <div class="feature-card gsap-fade-up">
         <div class="feature-icon">🔄</div>
         <h3>Multi-topic Routing</h3>
-        <p>Advanced wildcard routing keys and topic exchanges out of the box.</p>
+        <p>Any number of named topics and queues on one mesh. Names are matched exactly &mdash; there is no
+           wildcard or pattern matching, and topics and queues share a single namespace.</p>
       </div>
     </div>
   </section>
@@ -837,12 +862,12 @@ q.<span class="code-function">subscribe</span>(<span class="code-keyword">async<
     </div>
     <div class="mt-64 max-w-800" style="max-width: 800px; margin-left: auto; margin-right: auto;">
       <div class="faq-item gsap-fade-up">
-        <div class="faq-question">What is the best free alternative to Kafka?</div>
-        <div class="faq-answer">ZeroQ is widely considered a top free alternative to Kafka for frontend, edge, and serverless architectures. By removing the need for a JVM, Zookeeper, or expensive brokers, ZeroQ provides a pure peer-to-peer messaging experience that costs nothing to run.</div>
+        <div class="faq-question">Is ZeroQ a free alternative to Kafka?</div>
+        <div class="faq-answer">No. ZeroQ is source-available under the Business Source License 1.1 and any production use requires a paid commercial licence; it is free only for personal evaluation, academic research and contributing pull requests. It is also not functionally equivalent to Kafka &mdash; delivery is at-most-once, with no durable log, no replay and no consumer offsets. It removes the need to operate a broker for small-scale browser-to-browser fan-out, but a WebSocket signaling server is still required.</div>
       </div>
       <div class="faq-item gsap-fade-up">
         <div class="faq-question">How does it persist messages without a server?</div>
-        <div class="faq-answer">ZeroQ utilizes the browser's native IndexedDB to durably store messages locally. Across distributed clients, it employs WebRTC data channels to replicate state securely.</div>
+        <div class="faq-answer">Each peer writes messages it publishes or receives to its own IndexedDB store (<code>zeroq-db</code>), so they survive a reload in that browser. There is no replication and no cross-peer consensus: a peer that is offline when a message is broadcast never receives it, and there is no retention policy, so the store grows until the browser's storage quota is reached.</div>
       </div>
     </div>
   </section>
@@ -898,15 +923,15 @@ q.<span class="code-function">subscribe</span>(<span class="code-keyword">async<
         </div>
         <div>
           <h4 style="margin-bottom: 16px;">Product</h4>
-          <p><a href="#">Documentation</a></p>
-          <p><a href="#">API Reference</a></p>
-          <p><a href="#">Examples</a></p>
+          <p><a href="https://github.com/itsoumya-d/zeroq#readme">Documentation</a></p>
+          <p><a href="https://github.com/itsoumya-d/zeroq#api-reference">API Reference</a></p>
+          <p><a href="https://itsoumya-d.github.io/zeroq/llms.txt">llms.txt</a></p>
         </div>
         <div>
           <h4 style="margin-bottom: 16px;">Company</h4>
-          <p><a href="#">About</a></p>
-          <p><a href="#">Blog</a></p>
-          <p><a href="#">Contact</a></p>
+          <p><a href="https://github.com/itsoumya-d">About</a></p>
+          <p><a href="blog/index.html">Blog</a></p>
+          <p><a href="https://github.com/itsoumya-d/zeroq/issues">Contact</a></p>
         </div>
       </div>
       <div class="footer-bottom">
