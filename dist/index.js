@@ -27,7 +27,7 @@ module.exports = __toCommonJS(index_exports);
 // src/license-validator.ts
 var LicenseValidator = class {
   static AUTHOR = "Soumya Debnath";
-  static CONTACT = "soumyadebnath1661@gmail.com";
+  static CONTACT = "soumyadebnath1619@gmail.com";
   static validate(options) {
     const key = options?.licenseKey || (typeof process !== "undefined" ? process.env.COMMERCIAL_LICENSE_KEY : void 0);
     const isDev = typeof window !== "undefined" ? window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" : typeof process !== "undefined" && process.env.NODE_ENV !== "production";
@@ -44,7 +44,7 @@ Production use of this software requires a valid paid commercial license key.
 See LICENSE and COMMERCIAL_LICENSE.md for the applicable terms.
 
 Purchase a commercial license key:
-\u{1F4E7} soumyadebnath1661@gmail.com
+\u{1F4E7} soumyadebnath1619@gmail.com
    https://github.com/itsoumya-d/zeroq/blob/main/COMMERCIAL_LICENSE.md
 ================================================================================
       `);
