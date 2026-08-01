@@ -1,6 +1,6 @@
 # ZeroQ
 
-> Serverless P2P pub/sub message queue over WebRTC DataChannels.
+> ZeroQ moves pub/sub and work-queue messaging directly between browser peers, so small-scale event fan-out does not require operating a broker.
 
 ZeroQ routes messages peer-to-peer via WebRTC DataChannels with IndexedDB persistence and dead-letter queues. A lightweight Go discovery server handles WebRTC signaling only — message payloads never touch it. ZeroQ is in pre-release and is not published to npm.
 
