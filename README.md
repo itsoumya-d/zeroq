@@ -7,7 +7,7 @@
 
 <div align="center">
   <h1>ZeroQ</h1>
-  <p><b>Serverless P2P Message Queue — Pub/Sub, Work Queues, and RPC over WebRTC</b></p>
+  <p><b>ZeroQ moves pub/sub and work-queue messaging directly between browser peers, so small-scale event fan-out does not require operating a broker.</b></p>
 
   [![License: BSL 1.1](https://img.shields.io/badge/License-BSL_1.1-red.svg)](https://mariadb.com/bsl11/)
   [![Status: Pre-Release](https://img.shields.io/badge/status-pre--release-orange.svg)]()
