@@ -556,7 +556,9 @@ var MessageBroker = class {
     if (this.topicHandlers.has(msg.topic)) {
       for (const h of [...this.topicHandlers.get(msg.topic)]) {
         try {
-          h(msg);
+          Promise.resolve(h(msg)).catch((err) => {
+            console.warn("ZeroQ: subscriber threw", err);
+          });
         } catch (err) {
           console.warn("ZeroQ: subscriber threw", err);
         }
@@ -586,7 +588,9 @@ var MessageBroker = class {
           }
         };
         try {
-          handler(msg, ack, nack);
+          Promise.resolve(handler(msg, ack, nack)).catch((err) => {
+            console.warn("ZeroQ: consumer threw", err);
+          });
         } catch (err) {
           console.warn("ZeroQ: consumer threw", err);
         }

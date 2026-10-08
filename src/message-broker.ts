@@ -86,7 +86,11 @@ export class MessageBroker {
       // Copy before iterating: a handler may unsubscribe during dispatch.
       for (const h of [...this.topicHandlers.get(msg.topic)!]) {
         try {
-          h(msg);
+          // Observe returned promises without waiting: one slow subscriber
+          // must not block the others, and a rejection must stay isolated.
+          Promise.resolve(h(msg)).catch((err) => {
+            console.warn('ZeroQ: subscriber threw', err);
+          });
         } catch (err) {
           console.warn('ZeroQ: subscriber threw', err);
         }
@@ -117,7 +121,11 @@ export class MessageBroker {
           }
         };
         try {
-          handler(msg, ack, nack);
+          // Consumers may do asynchronous work. Keep acknowledgement explicit
+          // while handling failures after the synchronous call has returned.
+          Promise.resolve(handler(msg, ack, nack)).catch((err) => {
+            console.warn('ZeroQ: consumer threw', err);
+          });
         } catch (err) {
           console.warn('ZeroQ: consumer threw', err);
         }
