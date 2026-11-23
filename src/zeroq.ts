@@ -25,7 +25,10 @@ export class ZeroQ {
     this.discoveryClient = new DiscoveryClient(this.discoveryUrl);
     this.persistence = new PersistenceLayer();
     this.peerMesh = new PeerMesh();
-    this.broker = new MessageBroker(this.peerMesh, this.persistence);
+    this.broker = new MessageBroker(this.peerMesh, this.persistence, {
+      maxRetries: options?.maxRetries,
+      dlqSuffix: options?.dlqSuffix
+    });
 
     // init() is async and intentionally not awaited by the constructor; catch
     // here so a persistence failure can never become an unhandled rejection

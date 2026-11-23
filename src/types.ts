@@ -12,6 +12,9 @@ export interface Message {
   priority?: number;
   replyTo?: string;
   retryCount: number;
+  dlqReason?: string;
+  originalTopic?: string;
+  failedAt?: number;
 }
 
 export interface Subscription {
@@ -33,4 +36,8 @@ export interface ZeroQOptions {
   licenseKey?: string;
   /** Suppress the commercial-use notice during evaluation. */
   allowEval?: boolean;
+  /** Maximum retry attempts before routing message to Dead Letter Queue. Default 3. */
+  maxRetries?: number;
+  /** Topic suffix for routed Dead Letter Queue messages. Default '.dlq'. */
+  dlqSuffix?: string;
 }

@@ -18,10 +18,14 @@ export class MessageBroker {
   private queueHandlers: Map<string, Function[]> = new Map();
   private seenMessages: Set<string> = new Set();
   private seenMessagesQueue: string[] = [];
+  private maxRetries: number;
+  private dlqSuffix: string;
 
-  constructor(peerMesh: PeerMesh, persistence: PersistenceLayer) {
+  constructor(peerMesh: PeerMesh, persistence: PersistenceLayer, options?: { maxRetries?: number; dlqSuffix?: string }) {
     this.peerMesh = peerMesh;
     this.persistence = persistence;
+    this.maxRetries = options?.maxRetries ?? MAX_RETRIES;
+    this.dlqSuffix = options?.dlqSuffix ?? '.dlq';
 
     this.peerMesh.on('message_received', (data: string) => {
       // handleMessage is async; without this catch a rejection inside it becomes
@@ -109,12 +113,14 @@ export class MessageBroker {
             console.warn('ZeroQ: ack failed to remove message', err);
           }
         };
-        const nack = async () => {
+        const nack = async (reason?: string) => {
           try {
             msg.retryCount++;
-            await this.persistence.save(msg);
-            if (msg.retryCount < MAX_RETRIES) {
+            if (msg.retryCount < this.maxRetries) {
+              await this.persistence.save(msg);
               this.peerMesh.broadcast(Serializer.serialize(msg));
+            } else {
+              await this.routeToDlq(msg, reason || 'exhausted_retries');
             }
           } catch (err) {
             console.warn('ZeroQ: nack failed', err);
@@ -130,6 +136,24 @@ export class MessageBroker {
           console.warn('ZeroQ: consumer threw', err);
         }
       }
+    }
+  }
+
+  private async routeToDlq(msg: Message, reason: string): Promise<void> {
+    const dlqTopic = `${msg.topic}${this.dlqSuffix}`;
+    const dlqMessage: Message = {
+      ...msg,
+      originalTopic: msg.topic,
+      topic: dlqTopic,
+      dlqReason: reason,
+      failedAt: Date.now()
+    };
+    try {
+      await this.persistence.delete(msg.id);
+      await this.persistence.save(dlqMessage);
+      this.peerMesh.broadcast(Serializer.serialize(dlqMessage));
+    } catch (err) {
+      console.warn('ZeroQ: routing to DLQ failed', err);
     }
   }
 
