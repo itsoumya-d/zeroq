@@ -477,9 +477,13 @@ var MessageBroker = class {
   queueHandlers = /* @__PURE__ */ new Map();
   seenMessages = /* @__PURE__ */ new Set();
   seenMessagesQueue = [];
-  constructor(peerMesh, persistence) {
+  maxRetries;
+  dlqSuffix;
+  constructor(peerMesh, persistence, options) {
     this.peerMesh = peerMesh;
     this.persistence = persistence;
+    this.maxRetries = options?.maxRetries ?? MAX_RETRIES;
+    this.dlqSuffix = options?.dlqSuffix ?? ".dlq";
     this.peerMesh.on("message_received", (data) => {
       Promise.resolve(this.handleMessage(data)).catch((err) => {
         console.warn("ZeroQ: failed to handle inbound message", err);
@@ -550,12 +554,14 @@ var MessageBroker = class {
             console.warn("ZeroQ: ack failed to remove message", err);
           }
         };
-        const nack = async () => {
+        const nack = async (reason) => {
           try {
             msg.retryCount++;
-            await this.persistence.save(msg);
-            if (msg.retryCount < MAX_RETRIES) {
+            if (msg.retryCount < this.maxRetries) {
+              await this.persistence.save(msg);
               this.peerMesh.broadcast(Serializer.serialize(msg));
+            } else {
+              await this.routeToDlq(msg, reason || "exhausted_retries");
             }
           } catch (err) {
             console.warn("ZeroQ: nack failed", err);
@@ -569,6 +575,23 @@ var MessageBroker = class {
           console.warn("ZeroQ: consumer threw", err);
         }
       }
+    }
+  }
+  async routeToDlq(msg, reason) {
+    const dlqTopic = `${msg.topic}${this.dlqSuffix}`;
+    const dlqMessage = {
+      ...msg,
+      originalTopic: msg.topic,
+      topic: dlqTopic,
+      dlqReason: reason,
+      failedAt: Date.now()
+    };
+    try {
+      await this.persistence.delete(msg.id);
+      await this.persistence.save(dlqMessage);
+      this.peerMesh.broadcast(Serializer.serialize(dlqMessage));
+    } catch (err) {
+      console.warn("ZeroQ: routing to DLQ failed", err);
     }
   }
   async publish(topic, message, options) {
@@ -637,7 +660,10 @@ var ZeroQ = class {
     this.discoveryClient = new DiscoveryClient(this.discoveryUrl);
     this.persistence = new PersistenceLayer();
     this.peerMesh = new PeerMesh();
-    this.broker = new MessageBroker(this.peerMesh, this.persistence);
+    this.broker = new MessageBroker(this.peerMesh, this.persistence, {
+      maxRetries: options?.maxRetries,
+      dlqSuffix: options?.dlqSuffix
+    });
     this.init().catch((err) => {
       console.warn("ZeroQ: initialisation failed", err);
     });
