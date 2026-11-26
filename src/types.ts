@@ -10,6 +10,8 @@ export interface Message {
   timestamp: number;
   seq: number;
   priority?: number;
+  ttl?: number;
+  expiresAt?: number;
   replyTo?: string;
   retryCount: number;
   dlqReason?: string;

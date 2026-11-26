@@ -5,6 +5,8 @@ interface Message {
     timestamp: number;
     seq: number;
     priority?: number;
+    ttl?: number;
+    expiresAt?: number;
     replyTo?: string;
     retryCount: number;
     dlqReason?: string;
@@ -44,12 +46,16 @@ declare class ZeroQ {
     constructor(options?: ZeroQOptions);
     private init;
     createTopic(topic: string): Promise<void>;
-    publish(topic: string, message: any): Promise<void>;
+    publish(topic: string, message: any, options?: {
+        priority?: number;
+        ttl?: number;
+    }): Promise<void>;
     subscribe(topic: string, handler: (msg: Message) => void): Promise<Subscription>;
     createQueue(queue: string): Promise<void>;
     enqueue(queue: string, message: any, options?: {
         priority?: number;
         delay?: number;
+        ttl?: number;
     }): Promise<void>;
     consume(queue: string, handler: (msg: Message, ack: () => void, nack: () => void) => void): Promise<Consumer>;
     request(topic: string, message: any, timeoutMs?: number): Promise<any>;
