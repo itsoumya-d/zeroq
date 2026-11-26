@@ -58,8 +58,8 @@ export class ZeroQ {
     this.discoveryClient.send({ type: 'create_topic', topic });
   }
 
-  async publish(topic: string, message: any): Promise<void> {
-    await this.broker.publish(topic, message);
+  async publish(topic: string, message: any, options?: { priority?: number; ttl?: number }): Promise<void> {
+    await this.broker.publish(topic, message, options);
   }
 
   async subscribe(topic: string, handler: (msg: Message) => void): Promise<Subscription> {
@@ -71,11 +71,11 @@ export class ZeroQ {
     this.discoveryClient.send({ type: 'create_queue', queue });
   }
 
-  async enqueue(queue: string, message: any, options?: { priority?: number; delay?: number }): Promise<void> {
+  async enqueue(queue: string, message: any, options?: { priority?: number; delay?: number; ttl?: number }): Promise<void> {
     // `priority` is carried on the message envelope so consumers can read it.
     // NOTE: it does not reorder delivery — there is no priority scheduler.
     // `delay` is accepted for API compatibility and is not implemented.
-    await this.broker.publish(queue, message, { priority: options?.priority });
+    await this.broker.publish(queue, message, { priority: options?.priority, ttl: options?.ttl });
   }
 
   async consume(queue: string, handler: (msg: Message, ack: () => void, nack: () => void) => void): Promise<Consumer> {

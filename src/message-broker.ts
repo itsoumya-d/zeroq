@@ -80,6 +80,11 @@ export class MessageBroker {
       return;
     }
 
+    if (typeof msg.expiresAt === 'number' && Date.now() > msg.expiresAt) {
+      await this.routeToDlq(msg, 'message_expired');
+      return;
+    }
+
     try {
       await this.persistence.save(msg);
     } catch (err) {
@@ -146,8 +151,11 @@ export class MessageBroker {
       originalTopic: msg.topic,
       topic: dlqTopic,
       dlqReason: reason,
-      failedAt: Date.now()
+      failedAt: Date.now(),
+      retryCount: (msg.retryCount || 0) + 1
     };
+    delete dlqMessage.expiresAt;
+    delete dlqMessage.ttl;
     try {
       await this.persistence.delete(msg.id);
       await this.persistence.save(dlqMessage);
@@ -157,17 +165,22 @@ export class MessageBroker {
     }
   }
 
-  async publish(topic: string, message: any, options?: { priority?: number }) {
+  async publish(topic: string, message: any, options?: { priority?: number; ttl?: number }) {
+    const now = Date.now();
     const msg: Message = {
       id: crypto.randomUUID(),
       topic,
       payload: message,
-      timestamp: Date.now(),
+      timestamp: now,
       seq: 0,
       retryCount: 0
     };
     if (options?.priority !== undefined) {
       msg.priority = options.priority;
+    }
+    if (typeof options?.ttl === 'number' && options.ttl > 0) {
+      msg.ttl = options.ttl;
+      msg.expiresAt = now + options.ttl;
     }
 
     // Serialize first: a non-serialisable payload must not leave a row behind

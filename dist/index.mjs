@@ -526,6 +526,10 @@ var MessageBroker = class {
     if (!this.trackMessage(msg.id, msg.retryCount)) {
       return;
     }
+    if (typeof msg.expiresAt === "number" && Date.now() > msg.expiresAt) {
+      await this.routeToDlq(msg, "message_expired");
+      return;
+    }
     try {
       await this.persistence.save(msg);
     } catch (err) {
@@ -584,8 +588,11 @@ var MessageBroker = class {
       originalTopic: msg.topic,
       topic: dlqTopic,
       dlqReason: reason,
-      failedAt: Date.now()
+      failedAt: Date.now(),
+      retryCount: (msg.retryCount || 0) + 1
     };
+    delete dlqMessage.expiresAt;
+    delete dlqMessage.ttl;
     try {
       await this.persistence.delete(msg.id);
       await this.persistence.save(dlqMessage);
@@ -595,16 +602,21 @@ var MessageBroker = class {
     }
   }
   async publish(topic, message, options) {
+    const now = Date.now();
     const msg = {
       id: crypto.randomUUID(),
       topic,
       payload: message,
-      timestamp: Date.now(),
+      timestamp: now,
       seq: 0,
       retryCount: 0
     };
     if (options?.priority !== void 0) {
       msg.priority = options.priority;
+    }
+    if (typeof options?.ttl === "number" && options.ttl > 0) {
+      msg.ttl = options.ttl;
+      msg.expiresAt = now + options.ttl;
     }
     const wire = Serializer.serialize(msg);
     this.trackMessage(msg.id, 0);
@@ -680,8 +692,8 @@ var ZeroQ = class {
   async createTopic(topic) {
     this.discoveryClient.send({ type: "create_topic", topic });
   }
-  async publish(topic, message) {
-    await this.broker.publish(topic, message);
+  async publish(topic, message, options) {
+    await this.broker.publish(topic, message, options);
   }
   async subscribe(topic, handler) {
     this.discoveryClient.send({ type: "subscribe", topic });
@@ -691,7 +703,7 @@ var ZeroQ = class {
     this.discoveryClient.send({ type: "create_queue", queue });
   }
   async enqueue(queue, message, options) {
-    await this.broker.publish(queue, message, { priority: options?.priority });
+    await this.broker.publish(queue, message, { priority: options?.priority, ttl: options?.ttl });
   }
   async consume(queue, handler) {
     this.discoveryClient.send({ type: "consume", queue });
