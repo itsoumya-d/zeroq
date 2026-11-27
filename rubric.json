@@ -1,0 +1,43 @@
+{
+  "name": "zeroq-envelope-rubric",
+  "version": 1,
+  "passing_threshold": 85,
+  "description": "Scoring rubric for ZeroQ message envelopes and broadcast events.",
+  "checks": [
+    {
+      "id": "envelope_structure",
+      "name": "Envelope Header and Required Fields",
+      "description": "Verifies that envelope has non-empty id, topic, and numeric timestamp.",
+      "weight": 25,
+      "mechanical": true
+    },
+    {
+      "id": "topic_format",
+      "name": "Topic Naming Convention",
+      "description": "Topic must follow alphanumeric namespace format (e.g., 'telemetry.audio.stream') without whitespace or control chars.",
+      "weight": 25,
+      "mechanical": false
+    },
+    {
+      "id": "payload_integrity",
+      "name": "Payload Integrity",
+      "description": "Payload must be defined and non-null (cannot be empty undefined).",
+      "weight": 25,
+      "mechanical": false
+    },
+    {
+      "id": "ttl_bounds",
+      "name": "Time-To-Live (TTL) Validity",
+      "description": "TTL must be a non-negative integer representing expiry in milliseconds.",
+      "weight": 15,
+      "mechanical": true
+    },
+    {
+      "id": "header_types",
+      "name": "Headers & Retry Metadata",
+      "description": "Headers must be a valid key-value mapping and retryCount must be non-negative integer.",
+      "weight": 10,
+      "mechanical": true
+    }
+  ]
+}

@@ -5,3 +5,4 @@
 
 export * from './types';
 export * from './zeroq';
+export * from './verify-repair';

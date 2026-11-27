@@ -363,6 +363,50 @@ A: No. The server only routes WebRTC handshakes (SDP/ICE candidates).
 
 ---
 
+## Verify-and-Repair Envelope Validation Loop
+
+ZeroQ includes a built-in envelope verification and mechanical repair loop (`rubric.json`). Ingested message envelopes and broadcast frames are scored from 0 to 100 against a declarative rubric. Mechanical defects (missing ID, omitted timestamp, string TTL, missing headers) are repaired deterministically across up to 3 rounds and logged to an append-only ledger (`jsonl`), while non-mechanical issues (missing payload, malformed topic) are reported for human inspection without guessing.
+
+### Rubric Scoring Criteria
+
+| Check ID | Verification Rule | Weight | Type | Passing Action |
+|:---|:---|:---|:---|:---|
+| `envelope_structure` | Non-empty `id`, valid `topic`, numeric epoch `timestamp` | 25 | Mechanical | Auto-generates ID and assigns current timestamp |
+| `topic_format` | Namespace string adhering to `^[a-zA-Z0-9_\-\.]+$` | 25 | Non-Mechanical | Reported for human review (never guessed) |
+| `payload_integrity` | Non-null, defined payload content | 25 | Non-Mechanical | Reported for human review (never guessed) |
+| `ttl_bounds` | Integer TTL >= 0 (in milliseconds) | 15 | Mechanical | Coerces numeric string or sets default 60000ms |
+| `header_types` | Mapping `headers` and non-negative integer `retryCount` | 10 | Mechanical | Initializes `{}` and resets retry count |
+
+- **Passing Threshold:** 85 / 100
+- **Max Automated Rounds:** 3 cycles
+
+### Before and After Repair Example
+
+**Input (Malformed Envelope — Score: 50/100, FAILED):**
+```json
+{
+  "topic": "events.telemetry.audio",
+  "payload": { "audio_chunks": 128 },
+  "ttl": "45000",
+  "retryCount": -1
+}
+```
+
+**Repaired Output (Passes Rubric — Score: 100/100, PASSED):**
+```json
+{
+  "id": "zeroq_7f8c2b910a",
+  "topic": "events.telemetry.audio",
+  "payload": { "audio_chunks": 128 },
+  "timestamp": 1732702200000,
+  "ttl": 45000,
+  "headers": {},
+  "retryCount": 0
+}
+```
+
+---
+
 ## Author & License
 
 **Author:** Soumya Debnath  
