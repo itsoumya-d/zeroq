@@ -63,4 +63,51 @@ declare class ZeroQ {
     disconnect(): void;
 }
 
-export { type Consumer, type Message, type Subscription, ZeroQ, type ZeroQOptions };
+interface RubricCheck {
+    id: string;
+    name: string;
+    description: string;
+    weight: number;
+    mechanical: boolean;
+}
+interface Rubric {
+    name: string;
+    version: number;
+    passing_threshold: number;
+    checks: RubricCheck[];
+}
+interface VerificationViolation {
+    check_id: string;
+    name: string;
+    weight: number;
+    mechanical: boolean;
+    reason: string;
+}
+interface VerificationResult {
+    score: number;
+    passing_threshold: number;
+    passed: boolean;
+    violations: VerificationViolation[];
+}
+interface RepairRoundLog {
+    round: number;
+    timestamp: number;
+    score: number;
+    status: 'passed' | 'repaired' | 'unresolved_non_mechanical';
+    repairs?: string[];
+    non_mechanical_violations?: VerificationViolation[];
+}
+interface RepairResult {
+    rounds: number;
+    initial_score: number;
+    final_score: number;
+    passed: boolean;
+    message: Partial<Message>;
+    rounds_log: RepairRoundLog[];
+    unresolved: VerificationViolation[];
+}
+declare const DEFAULT_RUBRIC: Rubric;
+declare function verifyEnvelope(msg: Partial<Message>, rubric?: Rubric): VerificationResult;
+declare function repairEnvelope(msg: Partial<Message>, rubric?: Rubric, maxRounds?: number): RepairResult;
+
+export { type Consumer, DEFAULT_RUBRIC, type Message, type RepairResult, type RepairRoundLog, type Rubric, type RubricCheck, type Subscription, type VerificationResult, type VerificationViolation, ZeroQ, type ZeroQOptions, repairEnvelope, verifyEnvelope };
